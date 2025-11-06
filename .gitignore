@@ -64,6 +64,17 @@ htmlcov/
 # FastAPI
 *.pyc
 
+# Node.js / React
+node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 # Documentation files (keep only README.md for GitHub)
 API_SAMPLES.md
 AUTO_STOP_INDEX.md
