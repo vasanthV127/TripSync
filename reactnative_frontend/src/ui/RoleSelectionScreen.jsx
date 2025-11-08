@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../theme/appcolors.js";
 
 export default function RoleSelectionScreen({ navigation }) {
   const roles = [
     { name: "Student", icon: "school", color: "#FFA726" },
-    { name: "Driver", icon: "drive-eta", color: "#29B6F6" },
-    { name: "Parent", icon: "supervisor-account", color: "#66BB6A" },
+    { name: "Driver", icon: "car", color: "#29B6F6" },
+    { name: "Parent", icon: "people", color: "#66BB6A" },
   ];
 
   const [selectedRole, setSelectedRole] = useState(null);
@@ -37,7 +37,7 @@ export default function RoleSelectionScreen({ navigation }) {
             activeOpacity={0.8}
             onPress={() => handleRoleSelect(role.name)}
           >
-            <MaterialIcons
+            <Ionicons
               name={role.icon}
               size={30}
               color={selectedRole === role.name ? "#fff" : role.color}
