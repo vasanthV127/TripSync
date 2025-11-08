@@ -1,105 +1,120 @@
 # TripSync FastAPI Backend
 
-Modern bus tracking and attendance system built with FastAPI.
+Modern school bus tracking and management system built with FastAPI, MongoDB, and JWT authentication.
 
 ## 🚀 Quick Start
 
-```powershell
-# Navigate to project
-cd "d:\VASANTH\Final year\Capstone\TripSync_Backend\fastapi_backend"
-
+```bash
 # Install dependencies
 pip install -r requirements.txt
 
 # Configure environment
-# Copy .env.example to .env and set your MongoDB URI
+# Create .env file with your MongoDB URI
 
-# Run server
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Run development server
+uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 **Server URLs:**
-- API: http://localhost:8000
-- Swagger Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
+- **Local API**: http://localhost:3000
+- **Production API**: https://tripsync-uh0i.onrender.com
+- **Swagger Docs**: http://localhost:3000/docs
+- **Health Check**: http://localhost:3000/health
 
 ---
 
 ## 📊 Seeded Test Data
 
-The database is automatically seeded on startup with:
+The database is automatically seeded on startup with test data:
 
-**Admin:**
-- Email: `admin@example.com`
-- Password: `adminpass`
+### Admin Account
+```
+Email: admin@example.com
+Password: adminpass
+Role: admin
+Access: Web Admin Portal
+```
 
-**Drivers (5):**
-- Email: `driver1@example.com` to `driver5@example.com`
-- Password: `default`
-- Each assigned to Bus1-Bus5
+### Drivers (5 accounts)
+```
+Emails: driver1@example.com to driver5@example.com
+Password: default
+Role: driver
+Bus Assignment: Bus1 to Bus5
+Access: Mobile App
+```
 
-**Students (25):**
-- Email: `student1@example.com` to `student25@example.com`
-- Password: `default`
-- Roll numbers: `22BEC7001` to `22BEC7025`
-- Distributed across 5 routes (5 students per route)
+### Students (25 accounts)
+```
+Emails: student1@example.com to student25@example.com
+Password: default
+Roll Numbers: 22BEC7001 to 22BEC7025
+Distribution: 5 students per route (5 routes total)
+Access: Mobile App
+```
 
-**Parents (5):**
-- Email: `parent1@example.com` to `parent5@example.com`
-- Password: `default`
-- Linked to Student1-Student5
+### Parents (5 accounts)
+```
+Emails: parent1@example.com to parent5@example.com
+Password: default
+Children: Linked to Student1-Student5
+Access: Mobile App
+```
 
-**Routes (5):**
-1. Vijayawada to VIT AP
-2. Amaravati to VIT AP
-3. Guntur to VIT AP
-4. Eluru to VIT AP
-5. Mandadam to VIT AP
+### Routes (5 routes)
+1. **Route 1**: Vijayawada to VIT AP
+2. **Route 2**: Amaravati to VIT AP
+3. **Route 3**: Guntur to VIT AP
+4. **Route 4**: Eluru to VIT AP
+5. **Route 5**: Mandadam to VIT AP
 
-**Buses (5):**
-- Bus1 to Bus5 (each on a route with initial GPS coordinates)
+### Buses (5 buses)
+- Bus1 to Bus5
+- Each assigned to a route
+- Initial GPS coordinates set
+- Driver assigned
 
 ---
 
 ## 🔐 API Endpoints
 
-📖 **[View Complete Student API Guide](./STUDENT_API_GUIDE.md)** - Detailed guide for student profile, history, and attendance endpoints
-
 ### Authentication
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/register` | Create new user | No |
-| POST | `/api/login` | Get JWT token | No |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/auth/register` | Register new user | ❌ |
+| POST | `/auth/login` | Login and get JWT token | ❌ |
 
-**Example Login:**
+**Login Example:**
 ```json
-POST /api/login
+POST /auth/login
 {
-  "email": "student1@example.com",
-  "password": "default"
+  "email": "admin@example.com",
+  "password": "adminpass"
 }
-```
 
-**Response:**
-```json
+Response:
 {
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "role": "student"
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "role": "admin"
 }
 ```
 
 ---
 
 ### Buses
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/buses` | Get all buses with locations | Yes |
-| POST | `/api/buses/location` | Update bus GPS location | Yes (admin/driver) |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/buses` | Get all buses with locations | ✅ |
+| POST | `/buses` | Create new bus | ✅ (admin) |
+| PUT | `/buses/{id}` | Update bus details | ✅ (admin) |
+| DELETE | `/buses/{id}` | Delete bus | ✅ (admin) |
+| POST | `/buses/location` | Update bus GPS location | ✅ (driver/admin) |
 
 **Update Bus Location:**
 ```json
-POST /api/buses/location
+POST /buses/location
 Authorization: Bearer <token>
+
 {
   "busNumber": "Bus1",
   "lat": 16.5062,
@@ -110,35 +125,51 @@ Authorization: Bearer <token>
 ---
 
 ### Routes
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/routes` | Get all routes with stops | Yes |
-
----
-
-### Attendance
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/attendance/board` | Mark attendance when boarding | Yes (student) |
-| GET | `/api/attendance` | Get attendance records | Yes (all roles) |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/routes` | Get all routes with stops | ✅ |
+| POST | `/routes` | Create new route | ✅ (admin) |
+| PUT | `/routes/{id}` | Update route | ✅ (admin) |
+| DELETE | `/routes/{id}` | Delete route | ✅ (admin) |
 
 ---
 
 ### Students
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/students/profile` | Get complete student profile with route, bus, driver, attendance | Yes |
-| GET | `/api/students/list` | List all students (with filters) | Yes (admin/driver) |
-| GET | `/api/students/{roll_no}/attendance-summary` | Get attendance summary with date range | Yes |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/students/profile` | Get student profile with route, bus, driver | ✅ (student) |
+| GET | `/students` | List all students (with filters) | ✅ (admin/driver) |
+| GET | `/students/{roll_no}` | Get student by roll number | ✅ |
+| POST | `/students` | Create student | ✅ (admin) |
+| PUT | `/students/{roll_no}` | Update student | ✅ (admin) |
+| DELETE | `/students/{roll_no}` | Delete student | ✅ (admin) |
 
-**Board Bus (Student):**
+---
+
+### Drivers
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/drivers` | List all drivers | ✅ (admin) |
+| GET | `/drivers/{id}` | Get driver details | ✅ |
+| POST | `/drivers` | Create driver | ✅ (admin) |
+| PUT | `/drivers/{id}` | Update driver | ✅ (admin) |
+| DELETE | `/drivers/{id}` | Delete driver | ✅ (admin) |
+
+---
+
+### Attendance
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/attendance/board` | Mark attendance (student boards bus) | ✅ (student) |
+| GET | `/attendance` | Get attendance records (with filters) | ✅ |
+| GET | `/students/{roll_no}/attendance-summary` | Get attendance summary with date range | ✅ |
+
+**Mark Attendance:**
 ```json
-POST /api/attendance/board
+POST /attendance/board
 Authorization: Bearer <student_token>
-```
 
-**Response:**
-```json
+Response:
 {
   "message": "Attendance marked! Boarded at 09:15:30",
   "record": {
@@ -149,95 +180,238 @@ Authorization: Bearer <student_token>
     "location": {
       "lat": 16.5062,
       "long": 80.6480,
-      "timestamp": "2025-11-04T09:15:30"
+      "timestamp": "2025-11-08T09:15:30"
     }
   }
 }
 ```
 
-**Get Attendance:**
-```
-GET /api/attendance?date=2025-11-04&roll_no=22BEC7001
-Authorization: Bearer <token>
-```
+---
+
+### Messaging
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/messaging/send` | Send message to group | ✅ |
+| GET | `/messaging/{group_id}` | Get group messages | ✅ |
+| GET | `/messaging/groups` | Get user's groups | ✅ |
+
+---
+
+### Admin
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/admin/dashboard` | Get admin dashboard stats | ✅ (admin) |
+| GET | `/admin/users` | List all users | ✅ (admin) |
+| PUT | `/admin/users/{id}` | Update user | ✅ (admin) |
+| DELETE | `/admin/users/{id}` | Delete user | ✅ (admin) |
 
 ---
 
 ## 🔑 Authorization
 
-Include JWT token in requests:
+All protected endpoints require JWT token in the Authorization header:
+
 ```
 Authorization: Bearer <your_jwt_token>
 ```
 
-**Role-based access:**
-- **Admin**: All operations
-- **Driver**: Update bus location, view attendance
-- **Student**: Mark own attendance, view own records
-- **Parent**: View child's attendance
+**Role-based Access:**
+- **Admin**: Full system access (all endpoints)
+- **Driver**: Update bus location, view attendance, send messages
+- **Student**: Mark attendance, view own records, send messages
+- **Parent**: View child's attendance and bus location
 
 ---
 
-## 📝 Typical User Flow
+## 📝 Typical User Workflows
 
 ### Student Boarding Bus
-1. Login: `POST /api/login` with student credentials
-2. Board bus: `POST /api/attendance/board` (marks attendance with GPS)
-3. Check history: `GET /api/attendance`
+1. **Login**: `POST /auth/login` with student credentials
+2. **Board Bus**: `POST /attendance/board` (auto-captures GPS and time)
+3. **View History**: `GET /attendance?roll_no=22BEC7001`
 
 ### Driver Updating Location
-1. Login: `POST /api/login` with driver credentials
-2. Update location: `POST /api/buses/location`
-3. View attendance: `GET /api/attendance?busNumber=Bus1`
+1. **Login**: `POST /auth/login` with driver credentials
+2. **Update GPS**: `POST /buses/location` with current coordinates
+3. **View Students**: `GET /students?busNumber=Bus1`
+4. **Send Alert**: `POST /messaging/send`
 
 ### Admin Managing System
-1. Login with admin credentials
-2. View all buses: `GET /api/buses`
-3. View all routes: `GET /api/routes`
-4. Check attendance: `GET /api/attendance?date=2025-11-04`
+1. **Login**: `POST /auth/login` with admin credentials
+2. **Dashboard**: `GET /admin/dashboard` (overview stats)
+3. **Manage Buses**: CRUD operations on `/buses`
+4. **Manage Routes**: CRUD operations on `/routes`
+5. **View Attendance**: `GET /attendance?date=2025-11-08`
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework:** FastAPI 0.115.5
-- **Database:** MongoDB (Motor async driver)
-- **Auth:** JWT + bcrypt password hashing
-- **Validation:** Pydantic
-- **Server:** Uvicorn with auto-reload
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Framework | FastAPI | 0.115.5 |
+| Database | MongoDB | 4.x+ |
+| DB Driver | Motor | (async) |
+| Authentication | JWT | PyJWT |
+| Password Hash | bcrypt | |
+| Validation | Pydantic | 2.x |
+| Server | Uvicorn | |
+| Deployment | Render | |
 
 ---
 
 ## 📦 Environment Variables
 
-Required in `.env`:
+Required in `.env` file:
+
 ```env
-MONGO_URI=mongodb+srv://...
+# Database
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/
 MONGO_DB=tripsync
-JWT_SECRET=your_secret_key
-SECRET_KEY=your_app_secret
+
+# Security
+JWT_SECRET=your_super_secret_jwt_key_min_32_chars
+SECRET_KEY=your_app_secret_key
+
+# Server
 APP_HOST=0.0.0.0
-APP_PORT=8000
+APP_PORT=3000
+
+# Optional
+GROQ_API_KEY=your_groq_api_key_for_ai_features
 ```
 
 ---
 
-## 🧪 Testing with Swagger
+## 🧪 Testing with Swagger UI
 
-Visit http://localhost:8000/docs for interactive API testing:
-1. Click "Authorize" button
-2. Login via `/api/login` endpoint
-3. Copy the token from response
-4. Enter `Bearer <token>` in authorization dialog
-5. Test protected endpoints
+1. Visit http://localhost:3000/docs
+2. Click **"Authorize"** button (top right)
+3. Login via `/auth/login` endpoint
+4. Copy the `access_token` from response
+5. Paste token in authorization dialog: `Bearer <token>`
+6. Test any protected endpoint!
+
+**Quick Test Credentials:**
+```
+Admin: admin@example.com / adminpass
+Driver: driver1@example.com / default
+Student: student1@example.com / default
+```
 
 ---
 
-## 📊 Database Collections
+## 📊 Database Schema
 
-- `users` - Admin, drivers, students, parents
-- `buses` - Bus info with real-time locations
-- `routes` - Routes with stops and GPS coordinates
-- `attendance` - Student boarding records with timestamps
-- `complaints` - (future)
-- `messages` - (future)
+### Collections
+
+**users**
+```javascript
+{
+  _id: ObjectId,
+  email: string,
+  password: string (hashed),
+  role: "admin" | "driver" | "student" | "parent",
+  name: string,
+  phone?: string,
+  roll_no?: string,  // students only
+  busNumber?: string, // students/drivers
+  route_id?: ObjectId // students
+}
+```
+
+**buses**
+```javascript
+{
+  _id: ObjectId,
+  busNumber: string,
+  capacity: number,
+  driver_id: ObjectId,
+  route_id: ObjectId,
+  location: {
+    lat: number,
+    long: number,
+    timestamp: datetime
+  }
+}
+```
+
+**routes**
+```javascript
+{
+  _id: ObjectId,
+  name: string,
+  stops: [string],
+  coordinates: [{lat: number, long: number}]
+}
+```
+
+**attendance**
+```javascript
+{
+  _id: ObjectId,
+  student_id: ObjectId,
+  roll_no: string,
+  busNumber: string,
+  date: date,
+  time: time,
+  location: {
+    lat: number,
+    long: number,
+    timestamp: datetime
+  }
+}
+```
+
+---
+
+## 🚀 Deployment (Render)
+
+**Live API:** https://tripsync-uh0i.onrender.com
+
+### render.yaml Configuration
+```yaml
+services:
+  - type: web
+    name: tripsync-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+```
+
+**Environment Variables:**
+Set in Render Dashboard → Environment section
+
+---
+
+## 📚 Additional Resources
+
+- 📖 [Student API Guide](./STUDENT_API_GUIDE.md) - Detailed student endpoints
+- 📖 [Main README](../README.md) - Full project overview
+- 🌐 [API Docs (Swagger)](http://localhost:3000/docs)
+- 🌐 [Production API](https://tripsync-uh0i.onrender.com)
+
+---
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+---
+
+## 👨‍💻 Developer
+
+**Vasanth V**
+- VIT-AP University
+- GitHub: [@vasanthV127](https://github.com/vasanthV127)
+
+**Last Updated:** November 8, 2025
