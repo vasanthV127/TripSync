@@ -79,12 +79,14 @@ npm start
 - **Uvicorn** ASGI server
 
 ### Frontend - Web Admin Portal
-- **React 18.3.1**
-- **Vite 7.2.1** (build tool)
-- **Tailwind CSS v4** (@tailwindcss/postcss)
-- **React Router DOM 6.26.0**
-- **Axios 1.7.0**
-- **React Icons**
+- **React 19.1.1**
+- **Vite 7.2.2** (build tool)
+- **Tailwind CSS 3.3.3**
+- **React Router DOM 7.1.1**
+- **Axios 1.7.9**
+- **React Icons 5.4.0**
+- **React Leaflet 4.2.1** (maps)
+- **Leaflet 1.9.4** (mapping library)
 
 ### Mobile App
 - **React Native** (Expo)
@@ -94,16 +96,42 @@ npm start
 ## 📱 Features
 
 ### Admin Portal (Web)
-- ✅ Professional split-screen login
-- ✅ Complete dashboard
-- ✅ Bus management (CRUD)
-- ✅ Student management
-- ✅ Driver management
-- ✅ Route management
+- ✅ Professional split-screen login with role-based routing
+- ✅ Comprehensive dashboard with real-time statistics
+- ✅ **Bus Management** (Full CRUD)
+  - Modern card-based UI with status indicators
+  - Search and filter by route, status (Active/Idle)
+  - Edit, delete, and assign drivers
+- ✅ **Student Management** (Full CRUD)
+  - Search by roll number, name, or email
+  - Filter by route and bus
+  - Edit student details, delete students
+  - Auto-password generation (roll number)
+  - Automated welcome email with credentials
+  - Boarding point dropdown (route-specific)
+  - Bus dropdown (route-filtered)
+- ✅ **Driver Management**
+  - Search by name, email, or phone
+  - Filter by assigned bus
+  - Edit driver information
+- ✅ **Route Management** (Full CRUD)
+  - Create, edit, and delete routes
+  - Search by route name or stop
+  - Dynamic stop management
+  - Bus and student count per route
+- ✅ **Alerts & Messaging**
+  - Broadcast messages to all students
+  - Broadcast messages to all drivers
+  - Route-specific messages
+  - Complaint management with status tracking
+  - Admin response system
+- ✅ **Custom Toast Notifications**
+  - Non-blocking success/error/info/warning messages
+  - Auto-dismiss with manual close option
+  - Branded design matching app theme
+- ✅ Real-time bus tracking on interactive map
+- ✅ Leave request approval system
 - ✅ Attendance monitoring
-- ✅ Complaint resolution
-- ✅ Leave approval
-- ✅ Real-time bus tracking
 
 ### Student App (Mobile)
 - Real-time bus tracking
@@ -163,7 +191,13 @@ JWT_SECRET=your_jwt_secret_key
 SECRET_KEY=your_app_secret_key
 APP_HOST=0.0.0.0
 APP_PORT=3000
-GROQ_API_KEY=your_groq_api_key (optional)
+
+# Email Configuration (for student welcome emails)
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+EMAIL_FROM=your-email@gmail.com
 ```
 
 ### Frontend (.env)
@@ -277,10 +311,64 @@ MIT License
 ## 🎯 Project Status
 
 - ✅ Backend API (FastAPI + MongoDB)
-- ✅ Admin Web Portal (React + Tailwind)
+- ✅ Admin Web Portal (React + Tailwind + Leaflet Maps)
 - ✅ Mobile Apps (React Native)
 - ✅ Backend Deployed (Render)
+- ✅ Email System (SMTP with Gmail)
+- ✅ Custom Toast Notifications
+- ✅ Complete CRUD Operations (Buses, Routes, Students, Drivers)
+- ✅ Advanced Search & Filter Functionality
+- ✅ Complaint Management System
 - ⏳ Frontend Deployment (Pending)
-- ⏳ Full Feature Implementation (In Progress)
+- ⏳ Mobile App Polish (In Progress)
 
-**Last Updated:** November 8, 2025
+**Last Updated:** November 13, 2025
+
+---
+
+## 🎉 Recent Updates (November 2025)
+
+### ✨ New Features
+1. **Advanced Search & Filtering**
+   - Students: Search by roll no, name, email; Filter by route and bus
+   - Buses: Search by number/driver; Filter by route and status
+   - Routes: Search by name or stop
+   - Drivers: Search by name/email/phone; Filter by bus
+
+2. **Student Management Enhancements**
+   - Full CRUD operations (Create, Read, Update, Delete)
+   - Auto-password generation using roll number
+   - Automated welcome email with login credentials
+   - Smart dropdowns for boarding points and buses
+   - Email integration with Gmail SMTP
+
+3. **Custom Toast Notification System**
+   - Replaced browser alerts with professional toast notifications
+   - Success, error, info, and warning types
+   - Auto-dismiss with manual close option
+   - Slide-in animations with gradient backgrounds
+   - Non-blocking UX
+
+4. **UI/UX Improvements**
+   - Modern card-based layouts for buses and routes
+   - Enhanced tables with hover effects
+   - Real-time result counters for filters
+   - Clear filter buttons
+   - Consistent design across all sections
+   - Professional loading states
+
+5. **Backend Enhancements**
+   - Student DELETE endpoint
+   - Improved student UPDATE endpoint
+   - Support for both `boarding` and `boardingPoint` fields
+   - Enhanced error handling
+   - Better API response structures
+
+### 🐛 Bug Fixes
+- Fixed boarding point display showing "Not Set" for all students
+- Fixed complaint section variable name error
+- Fixed API endpoint paths for admin routes
+- Corrected hash_password import in student creation
+- Fixed SMTP server configuration
+
+---

@@ -17,7 +17,7 @@ export default function LoginScreen() {
     setLoading(true)
 
     try {
-      const response = await api.post('/login', { email, password })
+      const response = await api.post('/api/login', { email, password })
       
       if (response.data.role !== 'admin') {
         setError('Access denied. Admin portal only.')
@@ -25,10 +25,12 @@ export default function LoginScreen() {
         return
       }
 
-      localStorage.setItem('token', response.data.access_token)
+      // Backend returns 'token', not 'access_token'
+      localStorage.setItem('token', response.data.token)
       localStorage.setItem('userRole', response.data.role)
       navigate('/admin/dashboard')
     } catch (err) {
+      console.error('Login error:', err)
       setError(err.response?.data?.detail || 'Login failed. Please try again.')
     } finally {
       setLoading(false)
