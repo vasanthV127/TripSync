@@ -17,7 +17,7 @@ export default function LoginScreen() {
     setLoading(true)
 
     try {
-      const response = await api.post('/login', { email, password })
+      const response = await api.post('/api/login', { email, password })
       
       if (response.data.role !== 'admin') {
         setError('Access denied. Admin portal only.')
