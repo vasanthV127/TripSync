@@ -16,25 +16,43 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
-// Custom bus icon with image
+// Custom bus icon - Yellow location pin with bus symbol
 const busIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">
-      <rect x="8" y="16" width="48" height="32" rx="4" fill="#FFC812" stroke="#000" stroke-width="2"/>
-      <rect x="8" y="16" width="48" height="8" fill="#FF6B00"/>
-      <circle cx="18" cy="52" r="4" fill="#333"/>
-      <circle cx="46" cy="52" r="4" fill="#333"/>
-      <rect x="14" y="24" width="12" height="10" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
-      <rect x="28" y="24" width="12" height="10" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
-      <rect x="42" y="24" width="12" height="10" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
-      <rect x="14" y="36" width="12" height="8" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
-      <rect x="28" y="36" width="12" height="8" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
-      <rect x="42" y="36" width="12" height="8" rx="1" fill="#87CEEB" stroke="#000" stroke-width="1"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="45" height="60">
+      <!-- Location Pin Shape -->
+      <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0z" fill="#FFC107"/>
+      
+      <!-- White Circle Background -->
+      <circle cx="192" cy="192" r="120" fill="white"/>
+      
+      <!-- Bus Icon -->
+      <g transform="translate(192, 192)">
+        <!-- Bus Body -->
+        <rect x="-45" y="-30" width="90" height="60" rx="8" fill="#FFC107" stroke="#333" stroke-width="3"/>
+        
+        <!-- Bus Roof -->
+        <rect x="-45" y="-30" width="90" height="15" fill="#FFB300"/>
+        
+        <!-- Windows -->
+        <rect x="-38" y="-20" width="22" height="18" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        <rect x="-10" y="-20" width="22" height="18" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        <rect x="18" y="-20" width="22" height="18" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        
+        <!-- Lower Windows -->
+        <rect x="-38" y="5" width="22" height="15" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        <rect x="-10" y="5" width="22" height="15" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        <rect x="18" y="5" width="22" height="15" rx="2" fill="#87CEEB" stroke="#333" stroke-width="2"/>
+        
+        <!-- Wheels -->
+        <circle cx="-28" cy="35" r="7" fill="#333"/>
+        <circle cx="28" cy="35" r="7" fill="#333"/>
+      </g>
     </svg>
   `),
-  iconSize: [40, 40],
-  iconAnchor: [20, 35],
-  popupAnchor: [0, -35]
+  iconSize: [45, 60],
+  iconAnchor: [22.5, 60],
+  popupAnchor: [0, -60]
 })
 
 // Loading Spinner Component
@@ -465,7 +483,7 @@ function DashboardView({ buses, stats, mapCenter, busIcon }) {
                     <div className="p-2">
                       <h3 className="font-bold text-lg">{bus.number}</h3>
                       <p className="text-sm">Route: {bus.route}</p>
-                      <p className="text-sm">Driver: {bus.driverName || 'Not Assigned'}</p>
+                      <p className="text-sm">Driver: {bus.driver?.name || 'Not Assigned'}</p>
                       <p className="text-xs text-gray-500">
                         Last updated: {new Date(bus.currentLocation.timestamp).toLocaleTimeString()}
                       </p>
