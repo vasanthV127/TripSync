@@ -537,17 +537,33 @@ async def create_student(
     result = await db.users.insert_one(new_student)
     
     # Send email with credentials (async task)
+    email_sent = False
+    email_error = None
     try:
         await send_welcome_email(payload.email, payload.name, payload.roll_no, default_password)
+        email_sent = True
     except Exception as e:
         # Log the error but don't fail the student creation
-        print(f"Failed to send email: {str(e)}")
+        email_error = str(e)
+        print(f"Failed to send email: {email_error}")
+    
+    message = "Student created successfully."
+    if email_sent:
+        message += " Welcome email sent to student."
+    else:
+        message += f" Note: Email could not be sent. Please share credentials manually: Roll No: {payload.roll_no}, Password: {default_password}"
     
     return {
         "success": True,
-        "message": "Student created successfully. Welcome email sent with login credentials.",
+        "message": message,
         "rollNo": payload.roll_no,
-        "defaultPassword": default_password  # Return for admin reference
+        "defaultPassword": default_password,
+        "emailSent": email_sent,
+        "student": {
+            "name": payload.name,
+            "email": payload.email,
+            "rollNo": payload.roll_no
+        }
     }
 
 
@@ -562,14 +578,13 @@ async def send_welcome_email(email: str, name: str, roll_no: str, password: str)
     
     # Email configuration from environment variables
     SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
     SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
     
     # Skip email sending if not configured
     if not SENDER_EMAIL or not SENDER_PASSWORD:
-        print(f"Email not configured. Skipping email to {email}")
-        print(f"Credentials: Roll No: {roll_no}, Password: {password}")
+        print(f"📧 Email not configured. Skipping email to {email}")
+        print(f"📋 Credentials: Roll No: {roll_no}, Password: {password}")
         return
     
     subject = "Welcome to TripSync - Your Account Credentials"
@@ -615,15 +630,35 @@ async def send_welcome_email(email: str, name: str, roll_no: str, password: str)
         html_part = MIMEText(html_content, "html")
         message.attach(html_part)
         
-        # Send email
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(message)
+        # Try port 465 (SSL) first, then fallback to 587 (TLS)
+        last_error = None
+        for port, use_ssl in [(465, True), (587, False)]:
+            try:
+                if use_ssl:
+                    # Port 465 - SSL
+                    with smtplib.SMTP_SSL(SMTP_SERVER, port) as server:
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(message)
+                else:
+                    # Port 587 - TLS
+                    with smtplib.SMTP(SMTP_SERVER, port, timeout=10) as server:
+                        server.starttls()
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(message)
+                
+                print(f"✅ Welcome email sent successfully to {email} via port {port}")
+                return  # Success - exit function
+            except Exception as e:
+                last_error = e
+                print(f"⚠️ Failed to send via port {port}: {str(e)}")
+                continue
         
-        print(f"✅ Welcome email sent successfully to {email}")
+        # If both ports failed, raise the last error
+        if last_error:
+            print(f"❌ Error sending email to {email}: {str(last_error)}")
+            raise last_error
     except Exception as e:
-        print(f"❌ Error sending email to {email}: {str(e)}")
+        print(f"❌ Error preparing email to {email}: {str(e)}")
         raise
 
 

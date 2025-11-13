@@ -250,7 +250,7 @@ export default function AdminDashboard() {
         })
       } else if (modalType === 'addStudent') {
         // Use new admin endpoint that sets default password and sends email
-        await api.post('/api/admin/students', {
+        const response = await api.post('/api/admin/students', {
           roll_no: formData.roll_no,
           name: formData.name,
           email: formData.email,
@@ -258,7 +258,16 @@ export default function AdminDashboard() {
           boarding: formData.boarding || null,
           assignedBus: formData.assignedBus || null
         })
-        toast.success('Student created successfully! Welcome email sent with login credentials.', 4000)
+        
+        // Show different message based on email status
+        if (response.data.emailSent) {
+          toast.success(`Student created! Welcome email sent to ${formData.email}`, 4000)
+        } else {
+          toast.success(
+            `Student created successfully!\n\nCredentials (share manually):\nRoll No: ${response.data.rollNo}\nPassword: ${response.data.defaultPassword}\nEmail: ${formData.email}`,
+            8000
+          )
+        }
       } else if (modalType === 'editStudent') {
         await api.patch(`/api/admin/students/${formData.roll_no}`, {
           name: formData.name,
