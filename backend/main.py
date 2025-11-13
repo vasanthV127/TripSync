@@ -27,6 +27,15 @@ app.include_router(messaging.router)
 app.include_router(drivers.router)
 app.include_router(admin.router)
 
+@app.get("/")
+async def root():
+    """Root endpoint for health checks"""
+    return {
+        "status": "ok",
+        "service": "TripSync API",
+        "version": "1.0.0"
+    }
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
