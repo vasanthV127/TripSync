@@ -4,12 +4,9 @@
 User-agent: *
 Allow: /
 
-# Disallow admin-only pages from search engines
-Disallow: /admin/
+# Only disallow API endpoints from search engines
 Disallow: /api/
 
 # Sitemap location
 Sitemap: https://trip-sync-admin.vercel.app/sitemap.xml
 
-# Crawl-delay (optional, helps prevent server overload)
-Crawl-delay: 1
