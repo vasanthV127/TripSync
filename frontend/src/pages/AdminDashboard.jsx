@@ -198,6 +198,12 @@ export default function AdminDashboard() {
     // For edit bus, store the original number for API call
     if (type === 'editBus') {
       setFormData({ ...data, originalNumber: data.number })
+    } else if (type === 'editStudent') {
+      // Normalize boarding point field name
+      setFormData({ 
+        ...data, 
+        boardingPoint: data.boardingPoint || data.boarding || ''
+      })
     } else {
       setFormData(data)
     }

@@ -152,6 +152,23 @@ async def seed_database():
     """Seed the database with initial data (idempotent - won't duplicate)"""
     db = await get_db()
     
+    # Database seeding is disabled - admin can manually add data via dashboard
+    # To enable seeding, uncomment the code below
+    
+    print("ℹ️  Database seeding is disabled. Use admin dashboard to add routes, buses, drivers, and students.")
+    print("ℹ️  Admin login: admin@example.com / adminpass")
+    
+    # Ensure admin exists
+    if not await db.users.find_one({"email": SEED_ADMIN["email"]}):
+        admin = SEED_ADMIN.copy()
+        admin["password"] = hash_password(admin["password"])
+        await db.users.insert_one(admin)
+        print("✅ Created admin user (admin@example.com / adminpass)")
+    
+    return
+    
+    # SEEDING CODE DISABLED BELOW - Uncomment to re-enable
+    """
     # Seed routes
     if await db.routes.count_documents({}) == 0:
         await db.routes.insert_many(SEED_ROUTES)
@@ -204,3 +221,4 @@ async def seed_database():
         print(f"✅ Seeded {len(SEED_PARENTS)} parents (password: default)")
     
     print("🎉 Database seeding complete!")
+    """
