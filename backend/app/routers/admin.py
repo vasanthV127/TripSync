@@ -662,7 +662,7 @@ async def send_welcome_email(email: str, name: str, roll_no: str, password: str)
         raise
 
 
-@router.patch("/students/{roll_no}")
+@router.get("/students")
 async def get_all_students(
     current_user=Depends(get_current_user),
     db=Depends(get_db),
