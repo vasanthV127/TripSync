@@ -984,14 +984,13 @@ function StudentsView({ students, openModal }) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bus</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Boarding Point</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredStudents.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-6 py-12">
+                <td colSpan="6" className="px-6 py-12">
                   <div className="text-center">
                     <FaUserGraduate className="mx-auto text-6xl text-gray-300 mb-4" />
                     <p className="text-gray-500 text-lg mb-2">
@@ -1013,7 +1012,6 @@ function StudentsView({ students, openModal }) {
                   <td className="px-6 py-4 text-sm text-gray-600">{student.email}</td>
                   <td className="px-6 py-4">{student.assignedBus || 'Not Assigned'}</td>
                   <td className="px-6 py-4">{student.route || 'Not Assigned'}</td>
-                  <td className="px-6 py-4">{student.boardingPoint || student.boarding || 'Not Set'}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button 
