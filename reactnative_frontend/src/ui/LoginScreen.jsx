@@ -7,10 +7,38 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Colors from "../theme/appcolors.js";
+import { loginUser } from "../api/authService.js";
+import { CommonActions } from "@react-navigation/native";
+import { Alert } from "react-native";
+import Toast from "react-native-toast-message";
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
+  // const { role } = route.params;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const handleLogin = async () => {
+    try {
+      const data = await loginUser(email, password);
+      Toast.show({
+        type: "success",
+        text1: `Login Successful`,
+        // text2: `Role: ${data.role}`,
+      });
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        })
+      );
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Login Failed",
+        // text2: error.message,
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -36,10 +64,7 @@ export default function LoginScreen({ navigation }) {
         style={styles.input}
       />
 
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={() => navigation.navigate("Main")}
-      >
+      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginButtonText}>Login</Text>
       </TouchableOpacity>
     </View>

@@ -3,8 +3,28 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Colors from "../../theme/appcolors.js";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CommonActions } from "@react-navigation/native";
+import { logoutUser } from "../../api/authService.js";
+import Toast from "react-native-toast-message";
 
 export default function StudentSettingsScreen({ navigation }) {
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // clear token and role
+      Toast.show({
+        type: "success",
+        text1: "Logged out Successfully",
+      });
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        })
+      );
+    } catch (error) {
+      console.log("Logout failed:", error);
+    }
+  };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.container}>
@@ -42,10 +62,7 @@ export default function StudentSettingsScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color="#000" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => navigation.navigate("Complaints")}
-          >
+          <TouchableOpacity style={styles.item} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#000" />
             <Text style={styles.itemText}>Logout</Text>
             <Ionicons name="chevron-forward" size={20} color="#000" />
@@ -67,7 +84,7 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
     justifyContent: "space-between",
   },
   title: {

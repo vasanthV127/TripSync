@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
     justifyContent: "space-between",
   },
   title: {
