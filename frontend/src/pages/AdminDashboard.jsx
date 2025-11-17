@@ -115,21 +115,8 @@ export default function AdminDashboard() {
 
   const fetchBuses = async () => {
     try {
-      console.log('🔄 Fetching buses from API...')
       const response = await api.get('/api/admin/buses')
-      console.log('📦 Raw API response:', response)
-      console.log('📦 Response data:', response.data)
       const busesData = response.data?.buses || []
-      console.log('🚌 Fetched buses data:', busesData)
-      console.log('🚌 Number of buses:', busesData.length)
-      busesData.forEach(bus => {
-        console.log(`Bus ${bus.number}:`, bus)
-        if (bus.currentLocation) {
-          console.log(`  ✓ Location: Lat ${bus.currentLocation.lat}, Long ${bus.currentLocation.long}`)
-        } else {
-          console.log(`  ✗ No currentLocation field!`)
-        }
-      })
       setBuses(busesData)
     } catch (error) {
       console.error('❌ Error fetching buses:', error)
@@ -360,12 +347,10 @@ export default function AdminDashboard() {
     
     if (busWithLocation) {
       const center = [busWithLocation.currentLocation.lat, busWithLocation.currentLocation.long]
-      console.log(`📍 Map center from bus ${busWithLocation.number}:`, center)
       return center
     }
     
     // Default to VIT-AP MH1 Hostel location
-    console.log('📍 Map center: Using default VIT-AP location')
     return [16.5096, 80.6470]
   }
   
@@ -463,11 +448,8 @@ export default function AdminDashboard() {
               {activeSection === 'buses' && <BusesView buses={buses} openModal={openModal} fetchBuses={fetchBuses} />}
               {activeSection === 'drivers' && <DriversView drivers={drivers} openModal={openModal} />}
               {activeSection === 'students' && <StudentsView students={students} openModal={openModal} onEnrollFace={(student) => { 
-                console.log('onEnrollFace callback triggered with:', student);
                 setSelectedStudent(student);
-                console.log('setSelectedStudent called');
                 setShowFaceEnrollment(true);
-                console.log('setShowFaceEnrollment(true) called');
               }} />}
               {activeSection === 'routes' && <RoutesView routes={routes} openModal={openModal} />}
               {activeSection === 'alerts' && <AlertsView complaints={complaints} routes={routes} openModal={openModal} fetchComplaints={fetchComplaints} />}
@@ -492,21 +474,15 @@ export default function AdminDashboard() {
       )}
 
       {/* Face Enrollment Modal */}
-      {console.log('Modal check:', { showFaceEnrollment, selectedStudent })}
-      {showFaceEnrollment && selectedStudent ? (
-        <>
-          {console.log('RENDERING FaceEnrollment modal!')}
-          <FaceEnrollment 
-            student={selectedStudent}
-            onSuccess={() => { 
-              setShowFaceEnrollment(false); 
-              fetchDashboardData(); 
-            }}
-            onClose={() => setShowFaceEnrollment(false)}
-          />
-        </>
-      ) : (
-        console.log('Modal NOT rendering - showFaceEnrollment:', showFaceEnrollment, 'selectedStudent:', selectedStudent)
+      {showFaceEnrollment && selectedStudent && (
+        <FaceEnrollment 
+          student={selectedStudent}
+          onSuccess={() => { 
+            setShowFaceEnrollment(false); 
+            fetchDashboardData(); 
+          }}
+          onClose={() => setShowFaceEnrollment(false)}
+        />
       )}
 
       {/* Toast Notifications */}

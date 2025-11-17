@@ -149,11 +149,7 @@ const StudentsView = ({ students, openModal, onEnrollFace }) => {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => {
-                          console.log('Camera button clicked!', student);
-                          alert('Camera clicked for: ' + student.name);
-                          onEnrollFace(student);
-                        }} 
+                        onClick={() => onEnrollFace(student)} 
                         className="p-2 rounded-lg text-green-500 hover:bg-green-50 transition"
                         title="Enroll Face"
                       >

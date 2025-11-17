@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
@@ -11,5 +14,14 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ]
+  ],
+  "env": {
+    "MONGO_URI": "@mongo_uri",
+    "MONGO_DB": "tripsync",
+    "JWT_SECRET": "@jwt_secret",
+    "SECRET_KEY": "@secret_key",
+    "SENDER_EMAIL": "@sender_email",
+    "SENDER_PASSWORD": "@sender_password"
+  },
+  "regions": ["sin1"]
 }

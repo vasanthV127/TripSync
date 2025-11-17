@@ -18,6 +18,7 @@ class MQTTService:
         self.client: Optional[mqtt.Client] = None
         self.db: Optional[AsyncIOMotorDatabase] = None
         self.connected = False
+        self.should_reconnect = True
         
         # Topics
         self.LOCATION_TOPIC = "tripsync/bus/+/location"  # Subscribe to all buses
@@ -36,8 +37,12 @@ class MQTTService:
     
     def on_disconnect(self, client, userdata, rc):
         """Callback when disconnected from MQTT broker"""
-        print(f"Disconnected from MQTT broker. Return code: {rc}")
-        self.connected = False
+        if rc != 0:
+            # Silently handle reconnection - too verbose otherwise
+            self.connected = False
+        else:
+            print("✓ Disconnected from MQTT broker (clean)")
+            self.connected = False
     
     def on_message(self, client, userdata, msg):
         """Callback when message received"""
@@ -161,23 +166,35 @@ class MQTTService:
         self.db = db
         
         try:
-            self.client = mqtt.Client(client_id="tripsync_backend")
+            # Create MQTT client with clean session and protocol version 3.1.1
+            self.client = mqtt.Client(
+                client_id="tripsync_backend",
+                clean_session=True,
+                protocol=mqtt.MQTTv311
+            )
+            
+            # Set callbacks
             self.client.on_connect = self.on_connect
             self.client.on_disconnect = self.on_disconnect
             self.client.on_message = self.on_message
             
-            print(f"Connecting to MQTT broker: {self.broker}:{self.port}")
-            self.client.connect(self.broker, self.port, 60)
+            # Enable automatic reconnection
+            self.client.reconnect_delay_set(min_delay=1, max_delay=120)
             
-            # Start network loop in background
+            print(f"Connecting to MQTT broker: {self.broker}:{self.port}")
+            # Increase keep-alive to 120 seconds and set connection timeout
+            self.client.connect(self.broker, self.port, keepalive=120)
+            
+            # Start network loop in background (handles auto-reconnect)
             self.client.loop_start()
-            print("✓ MQTT service started")
+            print("✓ MQTT service started with auto-reconnect")
         
         except Exception as e:
             print(f"Error starting MQTT service: {e}")
     
     def stop(self):
         """Stop MQTT client"""
+        self.should_reconnect = False
         if self.client:
             self.client.loop_stop()
             self.client.disconnect()
