@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from bson import ObjectId
 from ..db import get_db
 from .deps import get_current_user
-from ..models.messaging import LeaveApproval, StudentUpdate, BusUpdate, DriverUpdate
+from ..models.messaging import LeaveApproval, StudentUpdate, BusUpdate, DriverUpdate, RouteCreate, RouteUpdate, StudentCreate
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -91,6 +91,47 @@ async def get_admin_dashboard(
 
 
 # ==================== BUS MANAGEMENT ====================
+
+@router.post("/buses")
+async def create_bus(
+    payload: BusUpdate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin creates a new bus
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Check if bus number already exists
+    existing = await db.buses.find_one({"number": payload.number})
+    if existing:
+        raise HTTPException(status_code=400, detail="Bus number already exists")
+    
+    # Create new bus
+    from datetime import datetime
+    new_bus = {
+        "number": payload.number,
+        "driverId": payload.driverId,
+        "route": payload.route,
+        "currentLocation": {
+            "lat": 16.5062,
+            "long": 80.6480,
+            "timestamp": datetime.now()
+        },
+        "currentStopIndex": 0,
+        "createdAt": datetime.now()
+    }
+    
+    result = await db.buses.insert_one(new_bus)
+    
+    return {
+        "success": True,
+        "message": "Bus created successfully",
+        "busNumber": payload.number
+    }
+
 
 @router.get("/buses")
 async def get_all_buses(
@@ -226,7 +267,7 @@ async def update_bus(
     db=Depends(get_db)
 ):
     """
-    Admin updates bus details (driver, route assignment)
+    Admin updates bus details (driver, route assignment, bus number)
     """
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access only")
@@ -237,6 +278,25 @@ async def update_bus(
         raise HTTPException(status_code=404, detail="Bus not found")
     
     update_data = {}
+    
+    # Update bus number (rename)
+    if payload.newNumber is not None and payload.newNumber != bus_number:
+        # Check if new number already exists
+        existing = await db.buses.find_one({"number": payload.newNumber})
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bus number {payload.newNumber} already exists"
+            )
+        
+        # Update bus number
+        update_data["number"] = payload.newNumber
+        
+        # Update all student assignments to new bus number
+        await db.users.update_many(
+            {"assignedBus": bus_number},
+            {"$set": {"assignedBus": payload.newNumber}}
+        )
     
     # Update driver
     if payload.driverId is not None:
@@ -290,8 +350,46 @@ async def update_bus(
     return {
         "success": True,
         "message": "Bus updated successfully",
-        "busNumber": bus_number,
+        "busNumber": payload.newNumber if payload.newNumber else bus_number,
         "updated": update_data
+    }
+
+
+@router.delete("/buses/{bus_number}")
+async def delete_bus(
+    bus_number: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin deletes a bus
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify bus exists
+    bus = await db.buses.find_one({"number": bus_number})
+    if not bus:
+        raise HTTPException(status_code=404, detail="Bus not found")
+    
+    # Check if students are assigned to this bus
+    student_count = await db.users.count_documents({
+        "role": "student",
+        "assignedBus": bus_number
+    })
+    
+    if student_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete bus. {student_count} students are assigned to this bus"
+        )
+    
+    # Delete the bus
+    result = await db.buses.delete_one({"number": bus_number})
+    
+    return {
+        "success": True,
+        "message": f"Bus {bus_number} deleted successfully"
     }
 
 
@@ -384,6 +482,247 @@ async def get_all_students(
     }
 
 
+@router.post("/students")
+async def create_student(
+    payload: StudentCreate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin creates a new student with default password and sends email
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Check if student with roll_no already exists
+    existing = await db.users.find_one({"roll_no": payload.roll_no})
+    if existing:
+        raise HTTPException(status_code=400, detail="Student with this roll number already exists")
+    
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": payload.email})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already in use")
+    
+    # Verify route if provided
+    if payload.route:
+        route = await db.routes.find_one({"name": payload.route})
+        if not route:
+            raise HTTPException(status_code=404, detail="Route not found")
+    
+    # Verify bus if provided
+    if payload.assignedBus:
+        bus = await db.buses.find_one({"number": payload.assignedBus})
+        if not bus:
+            raise HTTPException(status_code=404, detail="Bus not found")
+    
+    # Generate default password (roll number)
+    default_password = payload.roll_no
+    from ..core.security import hash_password
+    hashed_password = hash_password(default_password)
+    
+    new_student = {
+        "roll_no": payload.roll_no,
+        "name": payload.name,
+        "email": payload.email,
+        "password": hashed_password,
+        "role": "student",
+        "route": payload.route,
+        "boarding": payload.boarding,
+        "assignedBus": payload.assignedBus,
+        "createdAt": datetime.now(),
+        "passwordChanged": False  # Flag to track if user changed default password
+    }
+    
+    result = await db.users.insert_one(new_student)
+    
+    # Send email with credentials (async task)
+    email_sent = False
+    email_error = None
+    try:
+        await send_welcome_email(payload.email, payload.name, payload.roll_no, default_password)
+        email_sent = True
+    except Exception as e:
+        # Log the error but don't fail the student creation
+        email_error = str(e)
+        print(f"Failed to send email: {email_error}")
+    
+    message = "Student created successfully."
+    if email_sent:
+        message += " Welcome email sent to student."
+    else:
+        message += f" Note: Email could not be sent. Please share credentials manually: Roll No: {payload.roll_no}, Password: {default_password}"
+    
+    return {
+        "success": True,
+        "message": message,
+        "rollNo": payload.roll_no,
+        "defaultPassword": default_password,
+        "emailSent": email_sent,
+        "student": {
+            "name": payload.name,
+            "email": payload.email,
+            "rollNo": payload.roll_no
+        }
+    }
+
+
+async def send_welcome_email(email: str, name: str, roll_no: str, password: str):
+    """
+    Send welcome email with login credentials
+    """
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import os
+    
+    # Email configuration from environment variables
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
+    SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
+    
+    print(f"\n{'='*60}")
+    print(f"📧 EMAIL SENDING ATTEMPT")
+    print(f"{'='*60}")
+    print(f"To: {email}")
+    print(f"Name: {name}")
+    print(f"Roll No: {roll_no}")
+    print(f"SMTP Server: {SMTP_SERVER}:{SMTP_PORT}")
+    print(f"Sender Email: {SENDER_EMAIL}")
+    print(f"Password Configured: {'Yes' if SENDER_PASSWORD else 'No'}")
+    
+    # Skip email sending if not configured
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        print(f"⚠️ Email not configured. Skipping email to {email}")
+        print(f"📋 Credentials: Roll No: {roll_no}, Password: {password}")
+        print(f"{'='*60}\n")
+        return
+    
+    subject = "Welcome to TripSync - Your Account Credentials"
+    
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #FFC812; text-align: center;">Welcome to TripSync!</h2>
+                <p>Dear <strong>{name}</strong>,</p>
+                <p>Your student account has been created successfully. Here are your login credentials:</p>
+                
+                <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #FFC812; margin: 20px 0;">
+                    <p><strong>Roll Number:</strong> {roll_no}</p>
+                    <p><strong>Email:</strong> {email}</p>
+                    <p><strong>Password:</strong> {password}</p>
+                </div>
+                
+                <p><strong>Important:</strong></p>
+                <ul>
+                    <li>Please change your password after first login for security</li>
+                    <li>Keep your credentials secure and do not share them</li>
+                    <li>You can access TripSync at: <a href="http://localhost:5173">TripSync Portal</a></li>
+                </ul>
+                
+                <p>If you have any questions or need assistance, please contact the administrator.</p>
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                <p style="text-align: center; color: #888; font-size: 12px;">
+                    This is an automated email. Please do not reply.
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = SENDER_EMAIL
+        message["To"] = email
+        
+        html_part = MIMEText(html_content, "html")
+        message.attach(html_part)
+        
+        print(f"📤 Attempting to send email...")
+        
+        # Try port 465 (SSL) first, then fallback to 587 (TLS)
+        last_error = None
+        for port, use_ssl in [(SMTP_PORT, SMTP_PORT == 465), (587, False), (465, True)]:
+            try:
+                print(f"   Trying port {port} ({'SSL' if use_ssl else 'TLS'})...")
+                if use_ssl:
+                    # Port 465 - SSL
+                    with smtplib.SMTP_SSL(SMTP_SERVER, port, timeout=15) as server:
+                        server.set_debuglevel(0)  # Set to 1 for debug output
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(message)
+                else:
+                    # Port 587 - TLS
+                    with smtplib.SMTP(SMTP_SERVER, port, timeout=15) as server:
+                        server.set_debuglevel(0)  # Set to 1 for debug output
+                        server.starttls()
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(message)
+                
+                print(f"✅ Welcome email sent successfully to {email} via port {port}")
+                print(f"{'='*60}\n")
+                return  # Success - exit function
+            except smtplib.SMTPAuthenticationError as e:
+                last_error = e
+                print(f"❌ Authentication failed on port {port}: {str(e)}")
+                print(f"   Check SENDER_EMAIL and SENDER_PASSWORD in .env file")
+                continue
+            except smtplib.SMTPException as e:
+                last_error = e
+                print(f"⚠️ SMTP error on port {port}: {str(e)}")
+                continue
+            except Exception as e:
+                last_error = e
+                print(f"⚠️ Failed to send via port {port}: {str(e)}")
+                continue
+        
+        # If all ports failed, raise the last error
+        if last_error:
+            print(f"❌ All email sending attempts failed")
+            print(f"   Last error: {str(last_error)}")
+            print(f"{'='*60}\n")
+            raise last_error
+    except Exception as e:
+        print(f"❌ Error preparing email to {email}: {str(e)}")
+        print(f"{'='*60}\n")
+        raise
+
+
+@router.get("/students")
+async def get_all_students(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+    route: Optional[str] = Query(None, description="Filter by route"),
+    bus: Optional[str] = Query(None, description="Filter by bus number"),
+    boarding: Optional[str] = Query(None, description="Filter by boarding point")
+):
+    """
+    Get all students with filters
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    query = {"role": "student"}
+    if route:
+        query["route"] = route
+    if bus:
+        query["assignedBus"] = bus
+    if boarding:
+        query["boarding"] = boarding
+    
+    cursor = db.users.find(query, {"password": 0, "_id": 0})
+    students = [s async for s in cursor]
+    
+    return {
+        "count": len(students),
+        "students": students
+    }
+
+
 @router.patch("/students/{roll_no}")
 async def update_student(
     roll_no: str,
@@ -423,8 +762,11 @@ async def update_student(
             raise HTTPException(status_code=404, detail="Route not found")
         update_data["route"] = payload.route
     
-    if payload.boarding:
-        update_data["boarding"] = payload.boarding
+    # Handle both boarding and boardingPoint field names
+    boarding_value = payload.boardingPoint or payload.boarding
+    if boarding_value:
+        update_data["boarding"] = boarding_value
+        update_data["boardingPoint"] = boarding_value
     
     if payload.assignedBus:
         # Verify bus exists
@@ -448,6 +790,36 @@ async def update_student(
         "message": "Student updated successfully",
         "rollNo": roll_no,
         "updated": update_data
+    }
+
+
+@router.delete("/students/{roll_no}")
+async def delete_student(
+    roll_no: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin deletes a student
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify student exists
+    student = await db.users.find_one({"roll_no": roll_no, "role": "student"})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Delete the student
+    result = await db.users.delete_one({"roll_no": roll_no, "role": "student"})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    return {
+        "success": True,
+        "message": f"Student {roll_no} deleted successfully",
+        "rollNo": roll_no
     }
 
 
@@ -660,6 +1032,127 @@ async def get_route_details(
         "students": students,
         "studentCount": len(students),
         "stopCount": len(route.get("stops", []))
+    }
+
+
+@router.post("/routes")
+async def create_route(
+    payload: RouteCreate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin creates a new route
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Check if route already exists
+    existing = await db.routes.find_one({"name": payload.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Route name already exists")
+    
+    new_route = {
+        "name": payload.name,
+        "stops": payload.stops,
+        "coverageAreas": payload.coverageAreas or [],
+        "createdAt": datetime.now()
+    }
+    
+    result = await db.routes.insert_one(new_route)
+    
+    return {
+        "success": True,
+        "message": "Route created successfully",
+        "routeName": payload.name
+    }
+
+
+@router.patch("/routes/{route_name}")
+async def update_route(
+    route_name: str,
+    payload: RouteUpdate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin updates route details
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify route exists
+    route = await db.routes.find_one({"name": route_name})
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    
+    update_data = {}
+    
+    if payload.stops is not None:
+        update_data["stops"] = payload.stops
+    
+    if payload.coverageAreas is not None:
+        update_data["coverageAreas"] = payload.coverageAreas
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data["updatedAt"] = datetime.now()
+    
+    result = await db.routes.update_one(
+        {"name": route_name},
+        {"$set": update_data}
+    )
+    
+    return {
+        "success": True,
+        "message": "Route updated successfully",
+        "routeName": route_name
+    }
+
+
+@router.delete("/routes/{route_name}")
+async def delete_route(
+    route_name: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin deletes a route
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify route exists
+    route = await db.routes.find_one({"name": route_name})
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    
+    # Check if buses are assigned to this route
+    bus_count = await db.buses.count_documents({"route": route_name})
+    if bus_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete route. {bus_count} buses are assigned to this route"
+        )
+    
+    # Check if students are assigned to this route
+    student_count = await db.users.count_documents({
+        "role": "student",
+        "route": route_name
+    })
+    if student_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete route. {student_count} students are assigned to this route"
+        )
+    
+    # Delete the route
+    result = await db.routes.delete_one({"name": route_name})
+    
+    return {
+        "success": True,
+        "message": f"Route {route_name} deleted successfully"
     }
 
 

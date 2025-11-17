@@ -2,14 +2,47 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="TripSync - Smart college bus tracking and management system. Real-time bus location tracking, route management, attendance monitoring, and automated notifications for students, drivers, and administrators." />
+    <meta name="keywords" content="college bus tracking, student transport management, real-time GPS tracking, bus route management, attendance system, TripSync, campus transportation, student safety, bus monitoring" />
+    <meta name="author" content="TripSync Team" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    
+    <!-- Open Graph Meta Tags (for social media sharing) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TripSync - Smart College Bus Management System" />
+    <meta property="og:description" content="Real-time bus tracking, route management, and automated notifications for seamless campus transportation." />
+    <meta property="og:image" content="https://trip-sync-admin.vercel.app/logo.png" />
+    <meta property="og:url" content="https://trip-sync-admin.vercel.app" />
+    <meta property="og:site_name" content="TripSync" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TripSync - Smart College Bus Management" />
+    <meta name="twitter:description" content="Real-time bus tracking and management system for educational institutions." />
+    <meta name="twitter:image" content="https://trip-sync-admin.vercel.app/logo.png" />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#FFC812" />
+    
     <title>TripSync - College Bus Management</title>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - Optimized Loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&family=Unica+One&family=Merriweather:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Unica+One&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Unica+One&display=swap" rel="stylesheet"></noscript>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   </head>
   <body>
     <div id="root"></div>

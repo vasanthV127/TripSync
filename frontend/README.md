@@ -1,35 +1,19 @@
-# TripSync Admin Portal (React Web)# React + Vite
+# TripSync Admin Portal (React Web)
 
+Professional web-based admin portal for the TripSync School Bus Management System.
 
+## 🎯 Purpose
 
-Professional web-based admin portal for the TripSync School Bus Management System.This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-
-
-## 🎯 PurposeCurrently, two official plugins are available:
-
-
-
-This is the **admin-only** web interface for desktop/laptop use. Students, drivers, and parents use the React Native mobile app.- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This is the **admin-only** web interface for desktop/laptop use. Students, drivers, and parents use the React Native mobile app.
 
 ## 🚀 Quick Start
 
-## React Compiler
-
 ```bash
-
-# Install dependenciesThe React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
+# Install dependencies
 npm install
 
-## Expanding the ESLint configuration
-
 # Start development server
-
-npm run devIf you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-
+npm run dev
 
 # Build for production
 npm run build
@@ -46,7 +30,7 @@ npm run preview
 |------------|---------|---------|
 | React | 18.3.1 | UI Framework |
 | Vite | 7.2.1 | Build Tool & Dev Server |
-| Tailwind CSS | v4 | Styling Framework |
+| Tailwind CSS | 3.3.3 | Styling Framework |
 | React Router DOM | 6.26.0 | Client-side Routing |
 | Axios | 1.7.0 | HTTP Client |
 | React Icons | Latest | Icon Library |

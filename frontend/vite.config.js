@@ -6,11 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'https://tripsync-uh0i.onrender.com',
-        changeOrigin: true,
-      }
-    }
+    // Proxy disabled - using VITE_API_URL from .env instead
+    // proxy: {
+    //   '/api': {
+    //     target: 'https://tripsync-uh0i.onrender.com',
+    //     changeOrigin: true,
+    //   }
+    // }
   }
 })

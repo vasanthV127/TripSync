@@ -1,0 +1,12 @@
+# robots.txt for TripSync
+# Allow all search engines to crawl the site
+
+User-agent: *
+Allow: /
+
+# Only disallow API endpoints from search engines
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://trip-sync-admin.vercel.app/sitemap.xml
+

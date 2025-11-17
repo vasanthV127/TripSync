@@ -60,11 +60,14 @@ class StudentUpdate(BaseModel):
     email: Optional[str] = None
     route: Optional[str] = None
     boarding: Optional[str] = None
+    boardingPoint: Optional[str] = None  # Alternative field name
     assignedBus: Optional[str] = None
 
 
 class BusUpdate(BaseModel):
-    """Admin updates bus details"""
+    """Admin updates or creates bus details"""
+    number: Optional[str] = None
+    newNumber: Optional[str] = None  # For renaming bus
     driverId: Optional[str] = None
     route: Optional[str] = None
 
@@ -74,4 +77,27 @@ class DriverUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    assignedBus: Optional[str] = None
+
+
+class RouteCreate(BaseModel):
+    """Admin creates a new route"""
+    name: str
+    stops: List[str]
+    coverageAreas: Optional[List[str]] = None
+
+
+class RouteUpdate(BaseModel):
+    """Admin updates route details"""
+    stops: Optional[List[str]] = None
+    coverageAreas: Optional[List[str]] = None
+
+
+class StudentCreate(BaseModel):
+    """Admin creates a new student"""
+    roll_no: str
+    name: str
+    email: str
+    route: Optional[str] = None
+    boarding: Optional[str] = None
     assignedBus: Optional[str] = None
