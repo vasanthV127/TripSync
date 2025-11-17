@@ -5,9 +5,11 @@ services:
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: bash render_build.sh
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
       - key: MONGO_URI
         sync: false
       - key: MONGO_DB
@@ -22,3 +24,11 @@ services:
         value: $PORT
       - key: GROQ_API_KEY
         sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_PASSWORD
+        sync: false
+      - key: MQTT_BROKER
+        value: broker.hivemq.com
+      - key: MQTT_PORT
+        value: 1883
