@@ -578,13 +578,25 @@ async def send_welcome_email(email: str, name: str, roll_no: str, password: str)
     
     # Email configuration from environment variables
     SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
     SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
     
+    print(f"\n{'='*60}")
+    print(f"📧 EMAIL SENDING ATTEMPT")
+    print(f"{'='*60}")
+    print(f"To: {email}")
+    print(f"Name: {name}")
+    print(f"Roll No: {roll_no}")
+    print(f"SMTP Server: {SMTP_SERVER}:{SMTP_PORT}")
+    print(f"Sender Email: {SENDER_EMAIL}")
+    print(f"Password Configured: {'Yes' if SENDER_PASSWORD else 'No'}")
+    
     # Skip email sending if not configured
     if not SENDER_EMAIL or not SENDER_PASSWORD:
-        print(f"📧 Email not configured. Skipping email to {email}")
+        print(f"⚠️ Email not configured. Skipping email to {email}")
         print(f"📋 Credentials: Roll No: {roll_no}, Password: {password}")
+        print(f"{'='*60}\n")
         return
     
     subject = "Welcome to TripSync - Your Account Credentials"
@@ -630,35 +642,53 @@ async def send_welcome_email(email: str, name: str, roll_no: str, password: str)
         html_part = MIMEText(html_content, "html")
         message.attach(html_part)
         
+        print(f"📤 Attempting to send email...")
+        
         # Try port 465 (SSL) first, then fallback to 587 (TLS)
         last_error = None
-        for port, use_ssl in [(465, True), (587, False)]:
+        for port, use_ssl in [(SMTP_PORT, SMTP_PORT == 465), (587, False), (465, True)]:
             try:
+                print(f"   Trying port {port} ({'SSL' if use_ssl else 'TLS'})...")
                 if use_ssl:
                     # Port 465 - SSL
-                    with smtplib.SMTP_SSL(SMTP_SERVER, port) as server:
+                    with smtplib.SMTP_SSL(SMTP_SERVER, port, timeout=15) as server:
+                        server.set_debuglevel(0)  # Set to 1 for debug output
                         server.login(SENDER_EMAIL, SENDER_PASSWORD)
                         server.send_message(message)
                 else:
                     # Port 587 - TLS
-                    with smtplib.SMTP(SMTP_SERVER, port, timeout=10) as server:
+                    with smtplib.SMTP(SMTP_SERVER, port, timeout=15) as server:
+                        server.set_debuglevel(0)  # Set to 1 for debug output
                         server.starttls()
                         server.login(SENDER_EMAIL, SENDER_PASSWORD)
                         server.send_message(message)
                 
                 print(f"✅ Welcome email sent successfully to {email} via port {port}")
+                print(f"{'='*60}\n")
                 return  # Success - exit function
+            except smtplib.SMTPAuthenticationError as e:
+                last_error = e
+                print(f"❌ Authentication failed on port {port}: {str(e)}")
+                print(f"   Check SENDER_EMAIL and SENDER_PASSWORD in .env file")
+                continue
+            except smtplib.SMTPException as e:
+                last_error = e
+                print(f"⚠️ SMTP error on port {port}: {str(e)}")
+                continue
             except Exception as e:
                 last_error = e
                 print(f"⚠️ Failed to send via port {port}: {str(e)}")
                 continue
         
-        # If both ports failed, raise the last error
+        # If all ports failed, raise the last error
         if last_error:
-            print(f"❌ Error sending email to {email}: {str(last_error)}")
+            print(f"❌ All email sending attempts failed")
+            print(f"   Last error: {str(last_error)}")
+            print(f"{'='*60}\n")
             raise last_error
     except Exception as e:
         print(f"❌ Error preparing email to {email}: {str(e)}")
+        print(f"{'='*60}\n")
         raise
 
 

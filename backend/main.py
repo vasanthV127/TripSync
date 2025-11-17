@@ -1,10 +1,17 @@
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
 from app.core.config import get_settings
 from app.db import get_db, close_db
-from app.routers import auth, buses, routes, attendance, students, messaging, drivers, admin
+from app.routers import auth, buses, routes, attendance, students, messaging, drivers, admin, face_recognition
 from app.seed import seed_database
+from mqtt_service import mqtt_service
 
 app = FastAPI(title="TripSync API")
 
@@ -26,6 +33,7 @@ app.include_router(students.router)
 app.include_router(messaging.router)
 app.include_router(drivers.router)
 app.include_router(admin.router)
+app.include_router(face_recognition.router)
 
 @app.get("/")
 async def root():
@@ -44,7 +52,13 @@ async def health():
 async def startup_event():
     """Run database seeding on startup"""
     await seed_database()
+    
+    # Start MQTT service for real-time bus tracking
+    db = await get_db()
+    mqtt_service.start(db)
+    print("✓ MQTT service started for ESP32-CAM integration")
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    mqtt_service.stop()
     await close_db()

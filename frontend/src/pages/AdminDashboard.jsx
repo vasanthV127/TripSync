@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import { FaBus, FaUserTie, FaUserGraduate, FaRoute, FaBell, FaBars, FaTimes, FaPlus, FaEdit, FaTrash, FaChartBar, FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaExclamationTriangle, FaSearch } from 'react-icons/fa'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { FaBus, FaUserTie, FaUserGraduate, FaRoute, FaBell, FaBars, FaTimes, FaPlus, FaEdit, FaTrash, FaChartBar, FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaExclamationTriangle, FaSearch, FaCamera } from 'react-icons/fa'
 import { colors } from '../theme/colors'
 import api from '../api'
 import { useToast, ToastContainer } from '../components/Toast'
+import FaceEnrollment from '../components/FaceEnrollment'
+import StudentsView from '../components/admin/StudentsView'
+import StatsCard from '../components/shared/StatsCard'
+import LoadingSpinner from '../components/shared/LoadingSpinner'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -15,6 +19,12 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
+
+// Component to update map center dynamically - DISABLED to prevent auto-centering
+function MapCenterUpdater({ center }) {
+  // Auto-centering disabled - users can manually pan the map
+  return null
+}
 
 // Custom bus icon - Yellow location pin with bus symbol
 const busIcon = new L.Icon({
@@ -55,25 +65,6 @@ const busIcon = new L.Icon({
   popupAnchor: [0, -60]
 })
 
-// Loading Spinner Component
-function LoadingSpinner({ size = 'md', message = '' }) {
-  const sizeClasses = {
-    sm: 'w-4 h-4 border-2',
-    md: 'w-8 h-8 border-3',
-    lg: 'w-16 h-16 border-4'
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className={`relative ${sizeClasses[size]}`}>
-        <div className="absolute top-0 left-0 w-full h-full border-gray-200 rounded-full" style={{ borderWidth: size === 'sm' ? 2 : size === 'md' ? 3 : 4 }}></div>
-        <div className="absolute top-0 left-0 w-full h-full border-t-yellow-500 rounded-full animate-spin" style={{ borderWidth: size === 'sm' ? 2 : size === 'md' ? 3 : 4 }}></div>
-      </div>
-      {message && <p className="text-sm text-gray-600">{message}</p>}
-    </div>
-  )
-}
-
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { toast, toasts, removeToast } = useToast()
@@ -91,6 +82,8 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState(null)
   const [formData, setFormData] = useState({})
+  const [showFaceEnrollment, setShowFaceEnrollment] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState(null)
 
   // Fetch all data on mount
   useEffect(() => {
@@ -122,10 +115,25 @@ export default function AdminDashboard() {
 
   const fetchBuses = async () => {
     try {
+      console.log('🔄 Fetching buses from API...')
       const response = await api.get('/api/admin/buses')
-      setBuses(response.data?.buses || [])
+      console.log('📦 Raw API response:', response)
+      console.log('📦 Response data:', response.data)
+      const busesData = response.data?.buses || []
+      console.log('🚌 Fetched buses data:', busesData)
+      console.log('🚌 Number of buses:', busesData.length)
+      busesData.forEach(bus => {
+        console.log(`Bus ${bus.number}:`, bus)
+        if (bus.currentLocation) {
+          console.log(`  ✓ Location: Lat ${bus.currentLocation.lat}, Long ${bus.currentLocation.long}`)
+        } else {
+          console.log(`  ✗ No currentLocation field!`)
+        }
+      })
+      setBuses(busesData)
     } catch (error) {
-      console.error('Error fetching buses:', error)
+      console.error('❌ Error fetching buses:', error)
+      console.error('Error details:', error.response?.data)
       setBuses([])
     }
   }
@@ -342,10 +350,26 @@ export default function AdminDashboard() {
     { id: 'alerts', icon: FaBell, label: 'Alerts' },
   ]
 
-  // Calculate map center from buses
-  const mapCenter = buses.length > 0 && buses[0].currentLocation 
-    ? [buses[0].currentLocation.lat, buses[0].currentLocation.long]
-    : [16.5062, 80.6480] // Default to VIT AP
+  // Calculate map center from first bus with valid location, or use VIT-AP default
+  const getMapCenter = () => {
+    const busWithLocation = buses.find(bus => 
+      bus.currentLocation && 
+      bus.currentLocation.lat && 
+      bus.currentLocation.long
+    )
+    
+    if (busWithLocation) {
+      const center = [busWithLocation.currentLocation.lat, busWithLocation.currentLocation.long]
+      console.log(`📍 Map center from bus ${busWithLocation.number}:`, center)
+      return center
+    }
+    
+    // Default to VIT-AP MH1 Hostel location
+    console.log('📍 Map center: Using default VIT-AP location')
+    return [16.5096, 80.6470]
+  }
+  
+  const mapCenter = getMapCenter()
 
   return (
     <div className="h-screen flex overflow-hidden" style={{ backgroundColor: colors.background }}>
@@ -438,7 +462,13 @@ export default function AdminDashboard() {
               {activeSection === 'dashboard' && <DashboardView buses={buses} stats={stats} mapCenter={mapCenter} busIcon={busIcon} />}
               {activeSection === 'buses' && <BusesView buses={buses} openModal={openModal} fetchBuses={fetchBuses} />}
               {activeSection === 'drivers' && <DriversView drivers={drivers} openModal={openModal} />}
-              {activeSection === 'students' && <StudentsView students={students} openModal={openModal} />}
+              {activeSection === 'students' && <StudentsView students={students} openModal={openModal} onEnrollFace={(student) => { 
+                console.log('onEnrollFace callback triggered with:', student);
+                setSelectedStudent(student);
+                console.log('setSelectedStudent called');
+                setShowFaceEnrollment(true);
+                console.log('setShowFaceEnrollment(true) called');
+              }} />}
               {activeSection === 'routes' && <RoutesView routes={routes} openModal={openModal} />}
               {activeSection === 'alerts' && <AlertsView complaints={complaints} routes={routes} openModal={openModal} fetchComplaints={fetchComplaints} />}
             </>
@@ -461,6 +491,24 @@ export default function AdminDashboard() {
         />
       )}
 
+      {/* Face Enrollment Modal */}
+      {console.log('Modal check:', { showFaceEnrollment, selectedStudent })}
+      {showFaceEnrollment && selectedStudent ? (
+        <>
+          {console.log('RENDERING FaceEnrollment modal!')}
+          <FaceEnrollment 
+            student={selectedStudent}
+            onSuccess={() => { 
+              setShowFaceEnrollment(false); 
+              fetchDashboardData(); 
+            }}
+            onClose={() => setShowFaceEnrollment(false)}
+          />
+        </>
+      ) : (
+        console.log('Modal NOT rendering - showFaceEnrollment:', showFaceEnrollment, 'selectedStudent:', selectedStudent)
+      )}
+
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
@@ -469,6 +517,12 @@ export default function AdminDashboard() {
 
 // Dashboard View with Map
 function DashboardView({ buses, stats, mapCenter, busIcon }) {
+  // Generate a unique key based on bus locations to force map re-render when locations change
+  const mapKey = buses
+    .filter(b => b.currentLocation?.lat && b.currentLocation?.long)
+    .map(b => `${b.number}-${b.currentLocation.lat}-${b.currentLocation.long}`)
+    .join('_') || 'default-map'
+  
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -481,7 +535,13 @@ function DashboardView({ buses, stats, mapCenter, busIcon }) {
 
       {/* Map */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '600px' }}>
-        <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+        <MapContainer 
+          key={mapKey}
+          center={mapCenter} 
+          zoom={13} 
+          style={{ height: '100%', width: '100%' }}
+        >
+          <MapCenterUpdater center={mapCenter} />
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -499,6 +559,9 @@ function DashboardView({ buses, stats, mapCenter, busIcon }) {
                       <h3 className="font-bold text-lg">{bus.number}</h3>
                       <p className="text-sm">Route: {bus.route}</p>
                       <p className="text-sm">Driver: {bus.driver?.name || 'Not Assigned'}</p>
+                      <p className="text-xs text-gray-500">
+                        Lat: {bus.currentLocation.lat.toFixed(4)}, Long: {bus.currentLocation.long.toFixed(4)}
+                      </p>
                       <p className="text-xs text-gray-500">
                         Last updated: {new Date(bus.currentLocation.timestamp).toLocaleTimeString()}
                       </p>
@@ -873,180 +936,6 @@ function DriversView({ drivers, openModal }) {
   )
 }
 
-// Students View
-function StudentsView({ students, openModal }) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterRoute, setFilterRoute] = useState('')
-  const [filterBus, setFilterBus] = useState('')
-
-  // Get unique routes and buses for filters
-  const uniqueRoutes = [...new Set(students.map(s => s.route).filter(Boolean))]
-  const uniqueBuses = [...new Set(students.map(s => s.assignedBus).filter(Boolean))]
-
-  // Filter and search students
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = searchTerm === '' || 
-      student.roll_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesRoute = filterRoute === '' || student.route === filterRoute
-    const matchesBus = filterBus === '' || student.assignedBus === filterBus
-
-    return matchesSearch && matchesRoute && matchesBus
-  })
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Manage Students</h2>
-        <button
-          onClick={() => openModal('addStudent')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg transition hover:opacity-90"
-          style={{ backgroundColor: colors.color2, color: colors.color1 }}
-        >
-          <FaPlus /> Add Student
-        </button>
-      </div>
-
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search by Roll Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Student
-            </label>
-            <input
-              type="text"
-              placeholder="Search by roll no, name, or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            />
-          </div>
-
-          {/* Filter by Route */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filter by Route
-            </label>
-            <select
-              value={filterRoute}
-              onChange={(e) => setFilterRoute(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            >
-              <option value="">All Routes</option>
-              {uniqueRoutes.map((route, idx) => (
-                <option key={idx} value={route}>{route}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter by Bus */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filter by Bus
-            </label>
-            <select
-              value={filterBus}
-              onChange={(e) => setFilterBus(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            >
-              <option value="">All Buses</option>
-              {uniqueBuses.map((bus, idx) => (
-                <option key={idx} value={bus}>{bus}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Clear Filters */}
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSearchTerm('')
-                setFilterRoute('')
-                setFilterBus('')
-              }}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-
-        {/* Results Count */}
-        <div className="mt-3 text-sm text-gray-600">
-          Showing {filteredStudents.length} of {students.length} students
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll No</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bus</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredStudents.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="px-6 py-12">
-                  <div className="text-center">
-                    <FaUserGraduate className="mx-auto text-6xl text-gray-300 mb-4" />
-                    <p className="text-gray-500 text-lg mb-2">
-                      {students.length === 0 ? 'No students found' : 'No students match your filters'}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      {students.length === 0 
-                        ? 'Click "Add Student" to create your first student'
-                        : 'Try adjusting your search or filter criteria'}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredStudents.map((student, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium">{student.roll_no}</td>
-                  <td className="px-6 py-4">{student.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{student.email}</td>
-                  <td className="px-6 py-4">{student.assignedBus || 'Not Assigned'}</td>
-                  <td className="px-6 py-4">{student.route || 'Not Assigned'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => openModal('editStudent', student)} 
-                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition"
-                        title="Edit Student"
-                      >
-                        <FaEdit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => openModal('deleteStudent', student)} 
-                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition"
-                        title="Delete Student"
-                      >
-                        <FaTrash size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-// Routes View
 // Routes View
 function RoutesView({ routes, openModal }) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -1376,6 +1265,8 @@ function AlertsView({ complaints, routes, openModal, fetchComplaints }) {
     </div>
   )
 }
+
+// Main AdminDashboard component continues below with other view components...
 
 // Modal Component
 function Modal({ type, formData, setFormData, onSubmit, onClose, routes, drivers, buses, submitting }) {
