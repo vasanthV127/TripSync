@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaCamera, FaUserGraduate } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCamera, FaUserGraduate, FaHistory } from 'react-icons/fa';
 import { colors } from '../../theme/colors';
 
 const StudentsView = ({ students, openModal, onEnrollFace }) => {
@@ -154,6 +154,13 @@ const StudentsView = ({ students, openModal, onEnrollFace }) => {
                         title="Enroll Face"
                       >
                         <FaCamera size={16} />
+                      </button>
+                      <button 
+                        onClick={() => openModal('viewAttendance', student)} 
+                        className="p-2 rounded-lg text-purple-500 hover:bg-purple-50 transition"
+                        title="View Attendance History"
+                      >
+                        <FaHistory size={16} />
                       </button>
                       <button 
                         onClick={() => openModal('editStudent', student)} 

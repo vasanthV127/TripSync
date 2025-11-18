@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { FaBus, FaUserTie, FaUserGraduate, FaRoute, FaBell, FaBars, FaTimes, FaPlus, FaEdit, FaTrash, FaChartBar, FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaExclamationTriangle, FaSearch, FaCamera } from 'react-icons/fa'
+import { FaBus, FaUserTie, FaUserGraduate, FaRoute, FaBell, FaBars, FaTimes, FaPlus, FaEdit, FaTrash, FaChartBar, FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaExclamationTriangle, FaSearch, FaCamera, FaUsers } from 'react-icons/fa'
 import { colors } from '../theme/colors'
 import api from '../api'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -73,6 +73,7 @@ export default function AdminDashboard() {
   const [buses, setBuses] = useState([])
   const [drivers, setDrivers] = useState([])
   const [students, setStudents] = useState([])
+  const [parents, setParents] = useState([])
   const [routes, setRoutes] = useState([])
   const [stats, setStats] = useState({})
   const [complaints, setComplaints] = useState([])
@@ -84,6 +85,8 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({})
   const [showFaceEnrollment, setShowFaceEnrollment] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
+  const [attendanceRecords, setAttendanceRecords] = useState([])
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
 
   // Fetch all data on mount
   useEffect(() => {
@@ -102,6 +105,7 @@ export default function AdminDashboard() {
         fetchBuses(),
         fetchDrivers(),
         fetchStudents(),
+        fetchParents(),
         fetchRoutes(),
         fetchStats(),
         fetchComplaints()
@@ -152,6 +156,16 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchParents = async () => {
+    try {
+      const response = await api.get('/api/admin/parents')
+      setParents(response.data?.parents || [])
+    } catch (error) {
+      console.error('Error fetching parents:', error)
+      setParents([])
+    }
+  }
+
   const fetchRoutes = async () => {
     try {
       const response = await api.get('/api/admin/routes')
@@ -199,10 +213,28 @@ export default function AdminDashboard() {
         ...data, 
         boardingPoint: data.boardingPoint || data.boarding || ''
       })
+    } else if (type === 'viewAttendance') {
+      // Fetch attendance records for this student
+      setFormData(data)
+      fetchAttendanceHistory(data.roll_no)
     } else {
       setFormData(data)
     }
     setShowModal(true)
+  }
+
+  const fetchAttendanceHistory = async (rollNo) => {
+    setLoadingAttendance(true)
+    try {
+      const response = await api.get(`/api/attendance?roll_no=${rollNo}`)
+      setAttendanceRecords(response.data?.records || [])
+    } catch (error) {
+      console.error('Error fetching attendance:', error)
+      toast.error('Failed to load attendance history')
+      setAttendanceRecords([])
+    } finally {
+      setLoadingAttendance(false)
+    }
   }
 
   const closeModal = () => {
@@ -279,6 +311,24 @@ export default function AdminDashboard() {
         })
       } else if (modalType === 'deleteStudent') {
         await api.delete(`/api/admin/students/${formData.roll_no}`)
+      } else if (modalType === 'addParent') {
+        await api.post('/api/auth/register', {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password || 'default',
+          phone: formData.phone || '',
+          role: 'parent',
+          child: formData.child || null
+        })
+      } else if (modalType === 'editParent') {
+        await api.patch(`/api/admin/parents/${formData._id}`, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          child: formData.child
+        })
+      } else if (modalType === 'deleteParent') {
+        await api.delete(`/api/admin/parents/${formData._id}`)
       } else if (modalType === 'addRoute') {
         const stops = formData.stops ? formData.stops.split(',').map(s => s.trim()).filter(s => s) : []
         const coverageAreas = formData.coverageAreas ? formData.coverageAreas.split(',').map(s => s.trim()).filter(s => s) : []
@@ -333,6 +383,7 @@ export default function AdminDashboard() {
     { id: 'buses', icon: FaBus, label: 'Buses' },
     { id: 'drivers', icon: FaUserTie, label: 'Drivers' },
     { id: 'students', icon: FaUserGraduate, label: 'Students' },
+    { id: 'parents', icon: FaUsers, label: 'Parents' },
     { id: 'routes', icon: FaRoute, label: 'Routes' },
     { id: 'alerts', icon: FaBell, label: 'Alerts' },
   ]
@@ -451,6 +502,7 @@ export default function AdminDashboard() {
                 setSelectedStudent(student);
                 setShowFaceEnrollment(true);
               }} />}
+              {activeSection === 'parents' && <ParentsView parents={parents} students={students} openModal={openModal} />}
               {activeSection === 'routes' && <RoutesView routes={routes} openModal={openModal} />}
               {activeSection === 'alerts' && <AlertsView complaints={complaints} routes={routes} openModal={openModal} fetchComplaints={fetchComplaints} />}
             </>
@@ -469,7 +521,10 @@ export default function AdminDashboard() {
           routes={routes}
           drivers={drivers}
           buses={buses}
+          students={students}
           submitting={submitting}
+          attendanceRecords={attendanceRecords}
+          loadingAttendance={loadingAttendance}
         />
       )}
 
@@ -912,6 +967,133 @@ function DriversView({ drivers, openModal }) {
   )
 }
 
+// Parents View
+function ParentsView({ parents, students, openModal }) {
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Filter and search parents
+  const filteredParents = parents.filter(parent => {
+    const matchesSearch = searchTerm === '' || 
+      parent.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      parent.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      parent.child?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    return matchesSearch
+  })
+
+  // Get student name from roll_no
+  const getStudentName = (childRollNo) => {
+    if (!childRollNo) return 'Not Assigned'
+    const student = students.find(s => s.roll_no === childRollNo)
+    return student ? `${student.name} (${student.roll_no})` : childRollNo
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Manage Parents</h2>
+        <button
+          onClick={() => openModal('addParent')}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg transition hover:opacity-90"
+          style={{ backgroundColor: colors.color2, color: colors.color1 }}
+        >
+          <FaPlus /> Add Parent
+        </button>
+      </div>
+
+      {/* Search Section */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search Parent
+            </label>
+            <input
+              type="text"
+              placeholder="Search by name, email, or assigned student..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            />
+          </div>
+
+          {/* Clear Filters */}
+          <div className="flex items-end">
+            <button
+              onClick={() => setSearchTerm('')}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            >
+              Clear Search
+            </button>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-3 text-sm text-gray-600">
+          Showing {filteredParents.length} of {parents.length} parents
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Student</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredParents.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12">
+                  <div className="flex flex-col items-center justify-center text-gray-500">
+                    <FaUsers size={48} className="mb-3 opacity-30" />
+                    <p className="text-lg font-medium">No Parents Found</p>
+                    <p className="text-sm mt-1">
+                      {searchTerm ? 'Try adjusting your search criteria' : 'Click "Add Parent" to create a new parent account'}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredParents.map((parent, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">{parent.name}</td>
+                  <td className="px-6 py-4">{parent.email}</td>
+                  <td className="px-6 py-4">{parent.phone || 'N/A'}</td>
+                  <td className="px-6 py-4">{getStudentName(parent.child)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => openModal('editParent', parent)} 
+                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition"
+                        title="Edit Parent"
+                      >
+                        <FaEdit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => openModal('deleteParent', parent)} 
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition"
+                        title="Delete Parent"
+                      >
+                        <FaTrash size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // Routes View
 function RoutesView({ routes, openModal }) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -1245,7 +1427,7 @@ function AlertsView({ complaints, routes, openModal, fetchComplaints }) {
 // Main AdminDashboard component continues below with other view components...
 
 // Modal Component
-function Modal({ type, formData, setFormData, onSubmit, onClose, routes, drivers, buses, submitting }) {
+function Modal({ type, formData, setFormData, onSubmit, onClose, routes, drivers, buses, students, submitting, attendanceRecords, loadingAttendance }) {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
@@ -1542,6 +1724,128 @@ function Modal({ type, formData, setFormData, onSubmit, onClose, routes, drivers
                 </p>
               </div>
             </div>
+          ) : type === 'viewAttendance' ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg space-y-2 mb-4">
+                <p><strong>Roll No:</strong> {formData.roll_no}</p>
+                <p><strong>Name:</strong> {formData.name}</p>
+                <p><strong>Route:</strong> {formData.route || 'Not Assigned'}</p>
+                <p><strong>Bus:</strong> {formData.assignedBus || 'Not Assigned'}</p>
+              </div>
+              
+              {loadingAttendance ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+              ) : attendanceRecords.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No attendance records found for this student.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bus</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Boarding</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {attendanceRecords.map((record, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">{record.date}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{record.time}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{record.busNumber}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{record.boarding || 'N/A'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              record.status === 'Boarded' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {record.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="mt-4 text-sm text-gray-600 text-center">
+                    Total Records: {attendanceRecords.length}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : type === 'addParent' || type === 'editParent' ? (
+            <>
+              <input
+                name="name"
+                placeholder="Parent Name"
+                value={formData.name || ''}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border rounded-lg"
+              />
+              <input
+                name="email"
+                type="email"
+                placeholder="Email"
+                value={formData.email || ''}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border rounded-lg"
+              />
+              <input
+                name="phone"
+                placeholder="Phone Number"
+                value={formData.phone || ''}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg"
+              />
+              {type === 'addParent' && (
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Password"
+                  value={formData.password || ''}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              )}
+              <select
+                name="child"
+                value={formData.child || ''}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg"
+              >
+                <option value="">Select Assigned Student (Optional)</option>
+                {students.map((student, idx) => (
+                  <option key={idx} value={student.roll_no}>
+                    {student.name} ({student.roll_no})
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : type === 'deleteParent' ? (
+            <div className="space-y-3">
+              <p className="text-gray-600">
+                Are you sure you want to delete this parent?
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <p><strong>Name:</strong> {formData.name}</p>
+                <p><strong>Email:</strong> {formData.email}</p>
+                <p><strong>Assigned Student:</strong> {formData.child || 'Not Assigned'}</p>
+              </div>
+              <div className="bg-red-50 border-l-4 border-red-500 p-3">
+                <p className="text-sm text-red-700">
+                  <strong>Warning:</strong> This action cannot be undone. The parent account will be permanently removed from the system.
+                </p>
+              </div>
+            </div>
           ) : type === 'addRoute' || type === 'editRoute' ? (
             <>
               <input
@@ -1683,32 +1987,34 @@ function Modal({ type, formData, setFormData, onSubmit, onClose, routes, drivers
               disabled={submitting}
               className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {type === 'viewAttendance' ? 'Close' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 px-4 py-2 rounded-lg transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ backgroundColor: colors.color2, color: colors.color1 }}
-            >
-              {submitting ? (
-                <>
-                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {type.includes('delete') ? 'Deleting...' : 
-                   type.includes('add') ? 'Creating...' : 
-                   type.includes('broadcast') || type.includes('Complaint') ? 'Sending...' :
-                   'Saving...'}
-                </>
-              ) : (
-                type.includes('delete') ? 'Delete' : 
-                type.includes('add') ? 'Create' :
-                type.includes('broadcast') || type.includes('Complaint') ? 'Send' :
-                'Save'
-              )}
-            </button>
+            {type !== 'viewAttendance' && (
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 px-4 py-2 rounded-lg transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: colors.color2, color: colors.color1 }}
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {type.includes('delete') ? 'Deleting...' : 
+                     type.includes('add') ? 'Creating...' : 
+                     type.includes('broadcast') || type.includes('Complaint') ? 'Sending...' :
+                     'Saving...'}
+                  </>
+                ) : (
+                  type.includes('delete') ? 'Delete' : 
+                  type.includes('add') ? 'Create' :
+                  type.includes('broadcast') || type.includes('Complaint') ? 'Send' :
+                  'Save'
+                )}
+              </button>
+            )}
           </div>
         </form>
       </div>

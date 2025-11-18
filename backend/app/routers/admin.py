@@ -823,6 +823,126 @@ async def delete_student(
     }
 
 
+# ==================== PARENT MANAGEMENT ====================
+
+@router.get("/parents")
+async def get_all_parents(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Get all parent accounts
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    cursor = db.users.find({"role": "parent"}, {"password": 0})
+    parents = []
+    
+    async for parent in cursor:
+        parent["_id"] = str(parent["_id"])
+        parents.append(parent)
+    
+    return {
+        "count": len(parents),
+        "parents": parents
+    }
+
+
+@router.patch("/parents/{parent_id}")
+async def update_parent(
+    parent_id: str,
+    payload: dict,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin updates parent details
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify parent exists
+    try:
+        parent = await db.users.find_one({"_id": ObjectId(parent_id), "role": "parent"})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid parent ID")
+    
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent not found")
+    
+    update_data = {}
+    
+    if payload.get("name"):
+        update_data["name"] = payload["name"]
+    if payload.get("email"):
+        # Check if email is unique
+        existing = await db.users.find_one({
+            "email": payload["email"],
+            "_id": {"$ne": ObjectId(parent_id)}
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        update_data["email"] = payload["email"]
+    
+    if "phone" in payload:
+        update_data["phone"] = payload["phone"]
+    
+    if "child" in payload:
+        update_data["child"] = payload["child"]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data["updatedAt"] = datetime.now()
+    
+    result = await db.users.update_one(
+        {"_id": ObjectId(parent_id)},
+        {"$set": update_data}
+    )
+    
+    return {
+        "success": True,
+        "message": "Parent updated successfully",
+        "parentId": parent_id,
+        "updated": update_data
+    }
+
+
+@router.delete("/parents/{parent_id}")
+async def delete_parent(
+    parent_id: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Admin deletes a parent account
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    
+    # Verify parent exists
+    try:
+        parent = await db.users.find_one({"_id": ObjectId(parent_id), "role": "parent"})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid parent ID")
+    
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent not found")
+    
+    # Delete the parent
+    result = await db.users.delete_one({"_id": ObjectId(parent_id), "role": "parent"})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Parent not found")
+    
+    return {
+        "success": True,
+        "message": f"Parent {parent.get('name')} deleted successfully",
+        "parentId": parent_id
+    }
+
+
 # ==================== LEAVE REQUEST MANAGEMENT ====================
 
 @router.get("/leaves")

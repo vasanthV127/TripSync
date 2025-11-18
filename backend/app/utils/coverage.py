@@ -83,22 +83,26 @@ def get_coverage_points_by_route(route: Dict[str, Any], current_stop_index: Opti
 
         # exact match
         for stop in stops:
-            if _normalize_name(stop.get("name")) == norm_cov:
+            # Handle both string stops and dict stops
+            stop_name = stop if isinstance(stop, str) else stop.get("name", "")
+            if _normalize_name(stop_name) == norm_cov:
                 matched = {
-                    "name": stop.get("name"),
-                    "lat": stop.get("lat"),
-                    "long": stop.get("long"),
+                    "name": stop_name,
+                    "lat": stop.get("lat") if isinstance(stop, dict) else None,
+                    "long": stop.get("long") if isinstance(stop, dict) else None,
                     "order": idx,
                 }
                 break
         # contains match
         if not matched:
             for stop in stops:
-                if norm_cov in _normalize_name(stop.get("name")):
+                # Handle both string stops and dict stops
+                stop_name = stop if isinstance(stop, str) else stop.get("name", "")
+                if norm_cov in _normalize_name(stop_name):
                     matched = {
-                        "name": stop.get("name"),
-                        "lat": stop.get("lat"),
-                        "long": stop.get("long"),
+                        "name": stop_name,
+                        "lat": stop.get("lat") if isinstance(stop, dict) else None,
+                        "long": stop.get("long") if isinstance(stop, dict) else None,
                         "order": idx,
                     }
                     break
