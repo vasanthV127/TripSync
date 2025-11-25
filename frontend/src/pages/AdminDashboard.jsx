@@ -1343,7 +1343,14 @@ function AlertsView({ complaints, routes, openModal, fetchComplaints }) {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Student Complaints</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={fetchComplaints}
+                className="px-3 py-1 rounded text-sm bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
+                title="Refresh complaints"
+              >
+                <span>🔄</span> Refresh
+              </button>
               {['all', 'pending', 'in_progress', 'resolved'].map(status => (
                 <button
                   key={status}

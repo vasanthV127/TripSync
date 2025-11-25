@@ -1,4 +1,3 @@
-import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE_URL = "https://tripsync-uh0i.onrender.com";
@@ -27,13 +26,14 @@ export const apiRequest = async (endpoint, method = "GET", body = null) => {
     }
 
     if (!response.ok) {
-      const message = data?.message || "API error!";
+      const message = data?.message || data?.detail || "API error!";
+      console.error(`API Error: ${method} ${endpoint} - ${response.status} ${message}`);
       throw new Error(message);
     }
 
     return data; // token + role or other JSON data
   } catch (error) {
-    Alert.alert("API Error", error.message);
+    console.error("API Request Failed:", error.message);
     throw error;
   }
 };

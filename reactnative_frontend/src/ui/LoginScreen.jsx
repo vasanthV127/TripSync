@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import Colors from "../theme/appcolors.js";
 import { loginUser } from "../api/authService.js";
@@ -16,8 +17,18 @@ export default function LoginScreen({ navigation, route }) {
   // const { role } = route.params;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter email and password",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
       const data = await loginUser(email, password);
       Toast.show({
@@ -35,8 +46,10 @@ export default function LoginScreen({ navigation, route }) {
       Toast.show({
         type: "error",
         text1: "Login Failed",
-        // text2: error.message,
+        text2: error.message,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,8 +77,12 @@ export default function LoginScreen({ navigation, route }) {
         style={styles.input}
       />
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginButtonText}>Login</Text>
+      <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.loginButtonText}>Login</Text>
+        )}
       </TouchableOpacity>
     </View>
   );

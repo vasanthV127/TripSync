@@ -7,12 +7,13 @@ import MapView, { Marker, UrlTile, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Linking } from "react-native";
 import { useBusStore } from "../../store/useBusStore.js";
-import { getStudentBusDataCurrent } from "../../api/authService.js";
+import { getStudentBus, getStudentDriver } from "../../api/studentService.js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function StudentHomeScreen({ navigation, route }) {
   const [userLocation, setUserLocation] = useState(null);
   const [routeModalVisible, setRouteModalVisible] = useState(false);
-  const { busNumber, driverName, driverPhone } = useBusStore();
+  const { busNumber, driverName, driverPhone, setBusData: setStoreBusData } = useBusStore();
   const [busData, setBusData] = useState(null);
   const mapRef = useRef(null);
 
@@ -40,14 +41,41 @@ export default function StudentHomeScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    (async () => {
+    const fetchBusData = async () => {
       try {
-        const bus = await getStudentBusDataCurrent();
-        setBusData(bus); // your state
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          console.log("No token found, skipping bus fetch");
+          return;
+        }
+        
+        console.log("Fetching bus data...");
+        // Fetch bus data
+        const bus = await getStudentBus();
+        console.log("Bus data received:", bus);
+        setBusData(bus);
+        
+        console.log("Fetching driver data...");
+        // Fetch driver data separately
+        const driver = await getStudentDriver();
+        console.log("Driver data received:", driver);
+        
+        // Update store with bus and driver info
+        if (bus && driver) {
+          setStoreBusData({
+            busNumber: bus.number || "N/A",
+            driverName: driver.name || "N/A",
+            driverPhone: driver.phone || "",
+          });
+          console.log("Store updated with bus and driver info");
+        }
       } catch (e) {
-        console.log("Bus fetch failed:", e);
+        console.error("Bus/Driver fetch error:", e);
+        console.error("Error details:", e.message);
       }
-    })();
+    };
+    
+    fetchBusData();
   }, []);
 
   return (
@@ -117,19 +145,18 @@ export default function StudentHomeScreen({ navigation, route }) {
 
             {/* User Marker */}
             {userLocation && (
-              <Marker coordinate={userLocation} title="You" pinColor="green" />
-            )}
-
-            {/* Bus Route Polyline */}
-            {busData?.coveragePoints && (
-              <Polyline
-                coordinates={busData.coveragePoints.map((p) => ({
-                  latitude: p.lat,
-                  longitude: p.long,
-                }))}
-                strokeWidth={4}
-                strokeColor="blue"
-              />
+              <Marker 
+                coordinate={userLocation} 
+                title="Your Location"
+                description="You are here"
+              >
+                <View style={styles.markerContainer}>
+                  <View style={styles.userMarker}>
+                    <Ionicons name="person" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.markerLabel}>You</Text>
+                </View>
+              </Marker>
             )}
 
             {/* Live Bus Marker */}
@@ -139,9 +166,16 @@ export default function StudentHomeScreen({ navigation, route }) {
                   latitude: busData.currentLocation.lat,
                   longitude: busData.currentLocation.long,
                 }}
-                title="Your Bus"
-                pinColor="blue"
-              />
+                title={`Bus ${busNumber}`}
+                description="Live Location"
+              >
+                <View style={styles.markerContainer}>
+                  <View style={styles.busMarker}>
+                    <Ionicons name="bus" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.markerLabel}>{busNumber}</Text>
+                </View>
+              </Marker>
             )}
           </MapView>
         </View>
@@ -411,5 +445,58 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Poppins_500Medium",
     color: "#444",
+  },
+
+  markerContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  userMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+
+  busMarker: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#2196F3",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+
+  markerLabel: {
+    marginTop: 4,
+    backgroundColor: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontSize: 11,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#333",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });

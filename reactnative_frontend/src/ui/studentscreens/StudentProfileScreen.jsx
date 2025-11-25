@@ -14,13 +14,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar } from "react-native-calendars";
 import {
-  getProfile,
-  getDriverInfo,
-  getRouteInfo,
-  submitStudentComplaint,
-} from "../../api/authService.js";
+  getStudentProfile,
+  submitComplaint,
+  getStudentDriver,
+  getStudentRoute,
+} from "../../api/studentService.js";
 import Toast from "react-native-toast-message";
 import { useBusStore } from "../../store/useBusStore.js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function StudentProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -51,11 +52,16 @@ export default function StudentProfileScreen({ navigation }) {
 
   const fetchProfile = async () => {
     try {
-      const data = await getProfile();
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.log("No token found, skipping profile fetch");
+        return;
+      }
+      const data = await getStudentProfile();
       setProfile(data);
 
       setBusData({
-        busNumber: data.assignedBus,
+        busNumber: data.assignedBus || data.bus?.busNumber || "N/A",
       });
     } catch (err) {
       Toast.show({
@@ -95,8 +101,8 @@ export default function StudentProfileScreen({ navigation }) {
     setShowBusModal(true);
     setLoadingDriver(true);
     try {
-      const data = await getDriverInfo(); // your API call
-      setDriver(data); // set driver state
+      const data = await getStudentDriver();
+      setDriver(data);
 
       setBusData({
         driverName: data.name,
@@ -116,7 +122,7 @@ export default function StudentProfileScreen({ navigation }) {
     setShowRouteModal(true);
     setLoadingRoute(true);
     try {
-      const data = await getRouteInfo();
+      const data = await getStudentRoute();
       setRoute(data);
     } catch (err) {
       Toast.show({
@@ -137,17 +143,13 @@ export default function StudentProfileScreen({ navigation }) {
 
     setLoadingComplaint(true);
     try {
-      const response = await submitStudentComplaint(complaintData); // your API function
-      if (response.success) {
-        Toast.show({
-          type: "success",
-          text1: "Complaint submitted successfully",
-        });
-        setShowComplaintModal(false);
-        setComplaintData({ category: "", description: "", busNumber: "" });
-      } else {
-        Toast.show({ type: "error", text1: "Failed to submit complaint" });
-      }
+      const response = await submitComplaint(complaintData);
+      Toast.show({
+        type: "success",
+        text1: "Complaint submitted successfully",
+      });
+      setShowComplaintModal(false);
+      setComplaintData({ category: "", description: "", busNumber: "" });
     } catch (err) {
       Toast.show({ type: "error", text1: "Failed to submit complaint" });
     } finally {
