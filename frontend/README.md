@@ -1,6 +1,6 @@
 # TripSync Admin Portal (React Web)
 
-Professional web-based admin portal for the TripSync School Bus Management System.
+Professional web-based admin portal for the TripSync College Bus Management System.
 
 ## 🎯 Purpose
 

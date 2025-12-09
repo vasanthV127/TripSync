@@ -65,7 +65,7 @@ export default function LoginScreen() {
               fontWeight: 300,
             }}
           >
-            School Bus Management System
+            College Bus Management System
           </p>
           <p 
             className="text-base lg:text-lg"

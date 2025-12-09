@@ -58,7 +58,7 @@ export default function IntroScreen() {
               fontWeight: 300,
             }}
           >
-            School Bus Management System
+            College Bus Management System
           </p>
         </div>
         
